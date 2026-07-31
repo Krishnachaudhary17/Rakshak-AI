@@ -1,0 +1,67 @@
+/* =====================================================
+   Rakshak AI — Shared CSS (style.css)
+   Used by all pages via <link rel="stylesheet">
+   ===================================================== */
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:#010f1f}
+::-webkit-scrollbar-thumb{background:#45464d;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#ffb95f}
+
+/* ---- Alert Banner Scroll ---- */
+@keyframes seamlessTicker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ticker-outer{overflow:hidden;flex:1;margin-left:148px;}
+.ticker-inner{display:inline-flex;white-space:nowrap;animation:seamlessTicker 55s linear infinite;}
+.ticker-inner span{padding-right:96px;}
+
+/* ---- Map Scan Line ---- */
+@keyframes scanline{0%{top:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+.animate-scan{animation:scanline 2.5s ease-in-out infinite}
+
+/* ---- Pulse Marker ---- */
+@keyframes pulse-ring{0%{transform:scale(0.8);opacity:0.5}100%{transform:scale(2);opacity:0}}
+.pulse-marker{position:relative}
+.pulse-marker::before{content:'';position:absolute;inset:0;border-radius:50%;background-color:inherit;animation:pulse-ring 2s cubic-bezier(0.215,0.61,0.355,1) infinite}
+
+/* ---- Waveform ---- */
+@keyframes waveform{0%,100%{height:20%}50%{height:100%}}
+.wave-bar{animation:waveform 1s ease-in-out infinite}
+.wave-bar:nth-child(2){animation-delay:0.2s}
+.wave-bar:nth-child(3){animation-delay:0.4s}
+.wave-bar:nth-child(4){animation-delay:0.1s}
+.wave-bar:nth-child(5){animation-delay:0.3s}
+
+/* ---- Active Recording Pulse ---- */
+@keyframes recordingPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{box-shadow:0 0 0 12px rgba(239,68,68,0)}}
+.recording-pulse{animation:recordingPulse 1.2s ease-in-out infinite}
+
+/* ---- Loading Spinner ---- */
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-spinner{width:20px;height:20px;border:2px solid #273647;border-top-color:#ffb95f;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block}
+
+/* ---- Nav Links ---- */
+.nav-link{color:#c6c6cd;font-size:14px;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;padding:4px 8px;height:100%;display:flex;align-items:center;text-decoration:none;transition:color 0.2s,background 0.2s}
+.nav-link:hover{color:#d4e4fa;background:rgba(39,54,71,0.4)}
+
+/* ---- Custom Toggle Switch ---- */
+.toggle-track{width:40px;height:24px;background:#273647;border-radius:12px;position:relative;cursor:pointer;transition:background 0.2s}
+.toggle-thumb{width:16px;height:16px;border-radius:50%;position:absolute;top:4px;transition:transform 0.2s}
+.toggle-thumb.on{transform:translateX(20px)}
+.toggle-thumb.off{transform:translateX(4px)}
+
+/* ---- SOS Button ---- */
+.sos-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:12px;color:white;font-weight:700;font-size:14px;font-family:'JetBrains Mono',monospace;text-decoration:none;transition:opacity 0.2s,transform 0.1s}
+.sos-btn:hover{opacity:0.9;transform:scale(1.01)}
+
+/* ---- Chat Bubbles ---- */
+.chat-user{background:#0f172a;border:1px solid #45464d;border-radius:12px 12px 4px 12px;padding:8px 12px;font-size:13px;color:#d4e4fa;align-self:flex-end;max-width:85%}
+.chat-ai{background:#1a1000;border:1px solid rgba(255,185,95,0.2);border-radius:12px 12px 12px 4px;padding:8px 12px;font-size:13px;color:#d4e4fa;align-self:flex-start;max-width:85%}
+#chatHistory{display:flex;flex-direction:column;gap:8px}
+
+/* ---- Leaflet Dark Theme ---- */
+.leaflet-container{background:#010f1f!important}
+.leaflet-tile{filter:brightness(0.75) saturate(0.6)}
+.leaflet-popup-content-wrapper{background:#1c2b3c!important;color:#d4e4fa!important;border:1px solid #45464d!important;border-radius:8px!important;box-shadow:0 4px 16px rgba(0,0,0,0.6)!important}
+.leaflet-popup-tip{background:#1c2b3c!important}
+.leaflet-control-zoom a{background:#1c2b3c!important;color:#d4e4fa!important;border-color:#45464d!important}

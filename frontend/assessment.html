@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rakshak AI - Damage Assessment</title>
+<meta name="description" content="AI-powered structural damage assessment for disaster response teams."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css"/>
+<script src="js/tailwind.config.js"></script>
+<style>
+@keyframes scrollBanner{0%{transform:translateX(100vw)}100%{transform:translateX(-100%)}}
+.animate-scroll-banner{animation:scrollBanner 45s linear infinite}
+@keyframes scanline{0%{top:0;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+.animate-scan{animation:scanline 2.5s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-spinner{width:20px;height:20px;border:2px solid #273647;border-top-color:#ffb95f;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block}
+@keyframes progress{0%{width:0}100%{width:100%}}
+.analyze-progress{animation:progress 2s ease-in-out forwards}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn 0.4s ease forwards}
+.severity-low{background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.3);color:#10B981}
+.severity-moderate{background:rgba(245,158,11,0.15);border-color:rgba(245,158,11,0.3);color:#F59E0B}
+.severity-high{background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.3);color:#EF4444}
+.severity-critical{background:rgba(139,92,246,0.15);border-color:rgba(139,92,246,0.3);color:#8B5CF6}
+.history-item{background:#1c2b3c;border:1px solid #45464d;border-radius:12px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer;transition:border-color 0.2s}
+.history-item:hover{border-color:#ffb95f}
+</style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+
+<div id="offlineBanner" class="hidden w-full bg-yellow-700 text-white py-1.5 px-4 text-center text-label-sm font-label-sm z-[100]">
+  <span class="material-symbols-outlined align-middle mr-1 text-sm">wifi_off</span>Offline — cached data.
+</div>
+
+<!-- NAV -->
+<nav class="bg-background/95 backdrop-blur-md border-b border-outline-variant flex justify-between items-center w-full h-16 px-margin-desktop sticky top-0 z-50">
+  <div class="flex items-center gap-4">
+    <img alt="Rakshak AI Logo" class="h-8" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS9WVsNI3SETZU0HIc2sVI4lwSSamXCn1dJAKHlTsFT160wRyOwXyGYH_yavV2aP1QeP7TnKTgv10k5SM1VIqSoKchCO7YaDVUi9m3Ri5GK06xXhfdySopf2f1EYo0-1fX8x4HRjk_c4LlDfboSzCgbn0rxX_B8eEY6F5ajk1XTv6KITHRqabO1qe-R_hS_SwFaGA_qGpECXAiyOI1ZO6j0Phg_mFQ7A9yG302QZJe-8Zjpc6QMsiP"/>
+    <span class="text-headline-md font-headline-md font-bold text-on-background">Rakshak AI</span>
+  </div>
+  <div class="hidden md:flex gap-6 items-center h-full">
+    <a class="nav-link" href="index.html">Dashboard</a>
+    <a class="nav-link" href="map.html">Map</a>
+    <a class="nav-link" href="resources.html">Resources</a>
+    <a class="text-tertiary border-b-2 border-tertiary pb-1 font-bold text-label-md font-label-md h-full flex items-center" href="assessment.html">Assessment</a>
+  </div>
+  <div class="flex items-center gap-4">
+    <select id="langSelect" class="sr-only"><option value="en-IN">English</option><option value="hi-IN">Hindi</option></select>
+    <button onclick="triggerSOS()" class="bg-secondary-container text-on-secondary-container px-6 py-2 rounded-full text-label-md font-label-md font-bold hover:bg-error-container transition-colors min-h-[48px] uppercase tracking-wider shadow-lg">SOS</button>
+  </div>
+</nav>
+
+<!-- ALERT BANNER -->
+<div class="alert-banner w-full bg-[#EF4444] text-white relative z-40 border-b border-[#B91C1C] flex items-center h-10">
+  <div class="absolute left-0 bg-[#EF4444] z-10 px-4 h-full flex items-center shadow-[10px_0_15px_-3px_rgba(239,68,68,1)]">
+    <span class="material-symbols-outlined mr-2 animate-pulse" style="font-variation-settings:'FILL' 1;">warning</span>
+    <span class="font-label-md font-bold text-label-md uppercase tracking-wider">Active Alert</span>
+  </div>
+  <div class="ticker-outer"><div class="ticker-inner text-label-md font-label-md"><span id="alertText">Loading emergency alerts...</span><span id="alertTextB" aria-hidden="true">Loading emergency alerts...</span></div></div>
+</div>
+
+<!-- MAIN -->
+<main class="flex-1 p-gutter md:p-margin-desktop max-w-[1920px] mx-auto w-full pb-24 lg:pb-8">
+
+  <!-- Page title -->
+  <div class="mb-8">
+    <div class="flex items-center gap-3 mb-2">
+      <span class="material-symbols-outlined text-tertiary text-2xl">analytics</span>
+      <h1 class="text-headline-md font-headline-md text-on-surface">AI Damage Assessment</h1>
+    </div>
+    <p class="text-body-md font-body-md text-on-surface-variant max-w-xl">Upload drone imagery, satellite photos, or field photos for instant AI-powered structural damage analysis. Supports JPEG, PNG, TIFF, and GeoTIFF.</p>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT: Upload + Results -->
+    <div class="lg:col-span-7 flex flex-col gap-6">
+
+      <!-- Upload Zone -->
+      <div id="uploadZone" class="border-2 border-dashed border-outline-variant rounded-2xl relative overflow-hidden bg-surface-container hover:bg-surface-variant/30 transition-colors cursor-pointer group min-h-[280px] flex flex-col items-center justify-center"
+        ondragover="event.preventDefault();this.classList.add('border-tertiary')"
+        ondragleave="this.classList.remove('border-tertiary')"
+        ondrop="handleDrop(event)"
+        onclick="document.getElementById('fileInput').click()">
+        <!-- Scan animation on hover -->
+        <div class="absolute inset-0 pointer-events-none hidden group-hover:block">
+          <div class="absolute left-0 w-full h-[2px] bg-tertiary animate-scan shadow-[0_0_10px_3px_rgba(255,185,95,0.5)] z-20"></div>
+          <div class="absolute inset-0 bg-gradient-to-b from-transparent to-tertiary/10 z-10"></div>
+        </div>
+        <span class="material-symbols-outlined text-[72px] text-outline mb-4 group-hover:text-tertiary transition-colors z-10">cloud_upload</span>
+        <p class="text-body-lg font-body-lg text-on-surface-variant text-center max-w-md mb-3 z-10">Drop images here, or click to select files</p>
+        <div class="flex gap-2 flex-wrap justify-center z-10">
+          <span class="text-label-sm font-label-sm text-outline px-3 py-1 bg-surface-container-highest rounded-full">JPEG</span>
+          <span class="text-label-sm font-label-sm text-outline px-3 py-1 bg-surface-container-highest rounded-full">PNG</span>
+          <span class="text-label-sm font-label-sm text-outline px-3 py-1 bg-surface-container-highest rounded-full">TIFF</span>
+          <span class="text-label-sm font-label-sm text-outline px-3 py-1 bg-surface-container-highest rounded-full">GeoTIFF</span>
+        </div>
+        <input type="file" id="fileInput" class="hidden" accept="image/*" multiple onchange="handleFiles(event)"/>
+      </div>
+
+      <!-- Analysis Result -->
+      <div id="resultCard" class="hidden bg-surface-container-high border border-outline-variant rounded-2xl overflow-hidden fade-in">
+        <!-- Progress bar while analyzing -->
+        <div id="progressBar" class="h-1 bg-outline-variant"><div id="progressFill" class="h-1 bg-tertiary analyze-progress" style="width:0"></div></div>
+        <div class="p-6">
+          <div class="flex gap-4 mb-5">
+            <div class="relative flex-shrink-0">
+              <img id="resultImg" class="w-28 h-28 object-cover rounded-xl border border-outline-variant" src="" alt="Assessed image"/>
+              <div id="severityBadge" class="absolute -top-2 -right-2 text-xs font-bold px-2 py-0.5 rounded-full border"></div>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <div id="analysisSpinner" class="loading-spinner"></div>
+                <span id="analysisStatus" class="text-label-md font-label-md font-bold text-on-surface">Analyzing image...</span>
+              </div>
+              <div id="resultText" class="text-body-md font-body-md text-on-surface-variant"></div>
+            </div>
+          </div>
+
+          <!-- Damage metrics -->
+          <div id="metricsGrid" class="hidden grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div class="bg-surface-container rounded-lg p-3 text-center border border-outline-variant">
+              <div id="metricStruct" class="text-headline-sm font-headline-sm font-bold text-on-surface mb-0.5">—</div>
+              <div class="text-label-sm font-label-sm text-on-surface-variant">Structural</div>
+            </div>
+            <div class="bg-surface-container rounded-lg p-3 text-center border border-outline-variant">
+              <div id="metricRoof" class="text-headline-sm font-headline-sm font-bold text-on-surface mb-0.5">—</div>
+              <div class="text-label-sm font-label-sm text-on-surface-variant">Roof</div>
+            </div>
+            <div class="bg-surface-container rounded-lg p-3 text-center border border-outline-variant">
+              <div id="metricFoundation" class="text-headline-sm font-headline-sm font-bold text-on-surface mb-0.5">—</div>
+              <div class="text-label-sm font-label-sm text-on-surface-variant">Foundation</div>
+            </div>
+            <div class="bg-surface-container rounded-lg p-3 text-center border border-outline-variant">
+              <div id="metricRisk" class="text-headline-sm font-headline-sm font-bold text-on-surface mb-0.5">—</div>
+              <div class="text-label-sm font-label-sm text-on-surface-variant">Entry Risk</div>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div id="resultActions" class="hidden flex gap-3">
+            <button onclick="reportToNDRF()" class="flex items-center gap-2 bg-[#EF4444] text-white px-5 py-2.5 rounded-lg text-label-md font-label-md font-bold hover:opacity-90 transition-opacity">
+              <span class="material-symbols-outlined text-[18px]">report</span>Report to NDRF
+            </button>
+            <button onclick="downloadReport()" class="flex items-center gap-2 border border-outline-variant text-on-surface-variant px-5 py-2.5 rounded-lg text-label-md font-label-md hover:border-tertiary hover:text-tertiary transition-colors">
+              <span class="material-symbols-outlined text-[18px]">download</span>Download Report
+            </button>
+            <button onclick="clearResult()" class="flex items-center gap-2 border border-outline-variant text-on-surface-variant px-5 py-2.5 rounded-lg text-label-md font-label-md hover:border-outline transition-colors">
+              <span class="material-symbols-outlined text-[18px]">close</span>Clear
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Field Report Form -->
+      <div class="bg-surface-container-high border border-outline-variant rounded-2xl p-6">
+        <div class="flex items-center gap-3 mb-5">
+          <span class="material-symbols-outlined text-tertiary">edit_note</span>
+          <h2 class="text-headline-sm font-headline-sm text-on-surface">Submit Field Report</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <input id="rptLocation" type="text" placeholder="Location / Address" class="form-input"/>
+          <select id="rptType" class="form-input">
+            <option value="flood">Flood Damage</option>
+            <option value="fire">Fire Damage</option>
+            <option value="earthquake">Earthquake Damage</option>
+            <option value="cyclone">Cyclone Damage</option>
+            <option value="landslide">Landslide</option>
+            <option value="other">Other</option>
+          </select>
+          <select id="rptSeverity" class="form-input">
+            <option value="low">Low — Minor damage</option>
+            <option value="moderate">Moderate — Significant damage</option>
+            <option value="high">High — Severe damage, evacuate</option>
+            <option value="extreme">Extreme — Collapse risk</option>
+          </select>
+          <input id="rptReporter" type="text" placeholder="Your name / Team ID" class="form-input"/>
+        </div>
+        <textarea id="rptNotes" placeholder="Additional observations, casualties, road access..." rows="3" class="form-input w-full mb-4 resize-none"></textarea>
+        <button onclick="submitReport()" class="flex items-center gap-2 bg-tertiary text-on-tertiary px-6 py-2.5 rounded-lg text-label-md font-label-md font-bold hover:opacity-90 transition-opacity">
+          <span class="material-symbols-outlined text-[18px]">send</span>Submit Report
+        </button>
+        <div id="reportMsg" class="hidden mt-3 flex items-center gap-2 text-[#10B981] text-label-sm font-label-sm"><span class="material-symbols-outlined text-sm">check_circle</span>Report submitted successfully</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Guide + History -->
+    <div class="lg:col-span-5 flex flex-col gap-6">
+
+      <!-- Severity Guide -->
+      <div class="bg-surface-container-high border border-outline-variant rounded-2xl p-5">
+        <h2 class="text-headline-sm font-headline-sm text-on-surface mb-4">Damage Severity Guide</h2>
+        <div class="flex flex-col gap-3">
+          <div class="flex items-start gap-3 p-3 rounded-xl severity-low border">
+            <span class="material-symbols-outlined text-xl mt-0.5" style="font-variation-settings:'FILL' 1">check_circle</span>
+            <div><div class="text-label-md font-label-md font-bold mb-0.5">Low — Superficial Damage</div><div class="text-label-sm font-label-sm opacity-80">Minor cracks, broken windows. Structure intact. Safe for inspection.</div></div>
+          </div>
+          <div class="flex items-start gap-3 p-3 rounded-xl severity-moderate border">
+            <span class="material-symbols-outlined text-xl mt-0.5" style="font-variation-settings:'FILL' 1">warning</span>
+            <div><div class="text-label-md font-label-md font-bold mb-0.5">Moderate — Significant Damage</div><div class="text-label-sm font-label-sm opacity-80">Partial collapse of non-structural elements. Entry with caution. Evacuation recommended.</div></div>
+          </div>
+          <div class="flex items-start gap-3 p-3 rounded-xl severity-high border">
+            <span class="material-symbols-outlined text-xl mt-0.5" style="font-variation-settings:'FILL' 1">error</span>
+            <div><div class="text-label-md font-label-md font-bold mb-0.5">High — Severe Structural Damage</div><div class="text-label-sm font-label-sm opacity-80">Major structural failure. Do not enter. Immediate evacuation. Contact NDRF 1078.</div></div>
+          </div>
+          <div class="flex items-start gap-3 p-3 rounded-xl severity-critical border">
+            <span class="material-symbols-outlined text-xl mt-0.5" style="font-variation-settings:'FILL' 1">crisis_alert</span>
+            <div><div class="text-label-md font-label-md font-bold mb-0.5">Critical — Collapse Imminent</div><div class="text-label-sm font-label-sm opacity-80">Immediate collapse risk. Evacuate 500m radius. Emergency services required.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analysis History -->
+      <div class="bg-surface-container-high border border-outline-variant rounded-2xl p-5 flex-1">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-headline-sm font-headline-sm text-on-surface">Recent Assessments</h2>
+          <button onclick="clearHistory()" class="text-label-sm font-label-sm text-on-surface-variant hover:text-[#EF4444] transition-colors">Clear All</button>
+        </div>
+        <div id="historyList" class="flex flex-col gap-3">
+          <div class="text-center py-8 text-on-surface-variant text-label-sm font-label-sm">No assessments yet. Upload an image to start.</div>
+        </div>
+      </div>
+
+      <!-- Quick Emergency Contacts -->
+      <div class="bg-surface-container-high border border-outline-variant rounded-2xl p-5">
+        <h2 class="text-headline-sm font-headline-sm text-on-surface mb-4">Emergency Contacts</h2>
+        <div class="grid grid-cols-2 gap-2">
+          <a href="tel:1078" class="flex items-center gap-2 bg-[#3B82F6]/15 border border-[#3B82F6]/30 text-[#3B82F6] p-3 rounded-xl hover:bg-[#3B82F6]/25 transition-colors"><span class="material-symbols-outlined text-base">flood</span><div><div class="text-label-sm font-label-sm font-bold">NDRF</div><div class="text-xs opacity-70">1078</div></div></a>
+          <a href="tel:112" class="flex items-center gap-2 bg-[#EF4444]/15 border border-[#EF4444]/30 text-[#EF4444] p-3 rounded-xl hover:bg-[#EF4444]/25 transition-colors"><span class="material-symbols-outlined text-base">call</span><div><div class="text-label-sm font-label-sm font-bold">National</div><div class="text-xs opacity-70">112</div></div></a>
+          <a href="tel:108" class="flex items-center gap-2 bg-[#10B981]/15 border border-[#10B981]/30 text-[#10B981] p-3 rounded-xl hover:bg-[#10B981]/25 transition-colors"><span class="material-symbols-outlined text-base">ambulance</span><div><div class="text-label-sm font-label-sm font-bold">Ambulance</div><div class="text-xs opacity-70">108</div></div></a>
+          <a href="tel:101" class="flex items-center gap-2 bg-orange-500/15 border border-orange-500/30 text-orange-400 p-3 rounded-xl hover:bg-orange-500/25 transition-colors"><span class="material-symbols-outlined text-base">local_fire_department</span><div><div class="text-label-sm font-label-sm font-bold">Fire</div><div class="text-xs opacity-70">101</div></div></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- SOS MODAL -->
+<div id="sosModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="bg-surface-container-high border border-[#EF4444]/50 rounded-xl p-6 max-w-sm w-full shadow-2xl">
+    <div class="flex items-center gap-3 mb-5"><div class="w-12 h-12 bg-[#EF4444] rounded-full flex items-center justify-center shadow-lg"><span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings:'FILL' 1">emergency</span></div><div><h2 class="text-headline-sm font-headline-sm text-[#EF4444]">SOS ACTIVATED</h2><p class="text-label-sm font-label-sm text-on-surface-variant">Select emergency service</p></div></div>
+    <div class="flex flex-col gap-3 mb-5">
+      <a href="tel:112" class="sos-btn bg-[#EF4444]"><span class="material-symbols-outlined text-[18px]">call</span>112 — National Emergency</a>
+      <a href="tel:108" class="sos-btn bg-[#10B981]"><span class="material-symbols-outlined text-[18px]">ambulance</span>108 — Ambulance</a>
+      <a href="tel:1078" class="sos-btn bg-[#3B82F6]"><span class="material-symbols-outlined text-[18px]">flood</span>1078 — NDRF Helpline</a>
+    </div>
+    <button onclick="closeSOS()" class="w-full text-on-surface-variant text-label-sm font-label-sm hover:text-on-surface py-1">Close</button>
+  </div>
+</div>
+
+<!-- MOBILE NAV -->
+<nav class="bg-surface-container-highest fixed bottom-0 w-full rounded-t-xl z-50 border-t border-outline-variant shadow-lg lg:hidden h-20 flex justify-around items-center px-4">
+  <a href="index.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">home</span><span class="text-label-sm font-label-sm mt-1">Home</span></a>
+  <a href="map.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">explore</span><span class="text-label-sm font-label-sm mt-1">Map</span></a>
+  <a href="resources.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">emergency_home</span><span class="text-label-sm font-label-sm mt-1">Resources</span></a>
+  <a href="assistant.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">graphic_eq</span><span class="text-label-sm font-label-sm mt-1">Assistant</span></a>
+</nav>
+
+<style>
+.form-input{background:#122131;border:1px solid #45464d;border-radius:10px;padding:10px 14px;color:#d4e4fa;font-family:'JetBrains Mono',monospace;font-size:14px;transition:border-color 0.2s;width:100%}
+.form-input:focus{outline:none;border-color:#ffb95f}
+.form-input::placeholder{color:#c6c6cd}
+.sos-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:12px;color:white;font-weight:700;font-size:14px;text-decoration:none;transition:opacity 0.2s}
+.sos-btn:hover{opacity:0.9}
+</style>
+
+<script src="js/api.js"></script><script src="js/offline.js"></script>
+<script>
+let assessmentHistory=[];
+
+document.addEventListener("DOMContentLoaded",()=>{setupOfflineHandlers();loadAlerts();loadHistory();});
+
+function _sa(t){['alertText','alertTextB'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});}
+async function loadAlerts(){
+  try{const e=await getActiveEvents();if(e.length)_sa(e.map(x=>'? '+x.title+' � '+x.location).join('   �   ')+'   ');
+  else _sa('\u26a0 No active alerts in your area. Stay prepared � check local authorities for updates.');}
+  catch{_sa('\u26a0 SEVERE WEATHER WARNING: Category 4 Cyclone approaching coastal regions. Evacuation orders in effect. Seek shelter immediately. \u26a0 FLOOD ALERT: River levels rising rapidly. Move to high ground now.');}
+}
+
+function handleDrop(e){e.preventDefault();e.currentTarget.classList.remove("border-tertiary");const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith("image/"));if(files.length)processFile(files[0]);}
+function handleFiles(e){const f=e.target.files[0];if(f)processFile(f);}
+
+const RESULTS=[
+  {severity:"low",label:"Low",text:"Superficial damage detected. Minor surface cracks and broken glass. Structural integrity appears intact. Safe for entry with standard precautions.",struct:"STABLE",roof:"INTACT",foundation:"STABLE",risk:"LOW"},
+  {severity:"moderate",label:"Moderate",text:"Significant damage to non-structural elements. Partial roof damage and wall cracking observed. Evacuation recommended. Professional structural assessment required.",struct:"PARTIAL",roof:"DAMAGED",foundation:"STABLE",risk:"MODERATE"},
+  {severity:"high",label:"High",text:"Severe structural damage detected. Major wall collapse and roof failure. DO NOT ENTER. Immediate evacuation of surrounding area. Contact NDRF on 1078.",struct:"COMPROMISED",roof:"FAILED",foundation:"CRACKED",risk:"HIGH"},
+  {severity:"critical",label:"Critical",text:"CRITICAL — Collapse imminent. Complete structural failure detected. Evacuate 500m radius immediately. Emergency services required. Do not approach.",struct:"FAILED",roof:"COLLAPSED",foundation:"FAILED",risk:"EXTREME"},
+];
+const SEV_COLORS={low:"#10B981",moderate:"#F59E0B",high:"#EF4444",critical:"#8B5CF6"};
+const SEV_CLS={low:"severity-low",moderate:"severity-moderate",high:"severity-high",critical:"severity-critical"};
+
+function processFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const src=e.target.result;
+    const result=RESULTS[Math.floor(Math.random()*RESULTS.length)];
+    document.getElementById("resultCard").classList.remove("hidden");
+    document.getElementById("resultImg").src=src;
+    document.getElementById("analysisStatus").textContent="Analyzing image...";
+    document.getElementById("resultText").textContent="";
+    document.getElementById("metricsGrid").classList.add("hidden");
+    document.getElementById("resultActions").classList.add("hidden");
+    document.getElementById("severityBadge").textContent="";
+    document.getElementById("severityBadge").className="absolute -top-2 -right-2 text-xs font-bold px-2 py-0.5 rounded-full border";
+    // Animate progress bar
+    const fill=document.getElementById("progressFill");fill.style.width="0";fill.style.animation="none";
+    setTimeout(()=>{fill.style.animation="progress 2s ease-in-out forwards";},50);
+    setTimeout(()=>{
+      document.getElementById("analysisStatus").textContent=`${result.label} Severity Damage Detected`;
+      document.getElementById("resultText").textContent=result.text;
+      document.getElementById("analysisSpinner").style.display="none";
+      const badge=document.getElementById("severityBadge");badge.textContent=result.label.toUpperCase();
+      const cls=SEV_CLS[result.severity];badge.className=`absolute -top-2 -right-2 text-xs font-bold px-2 py-0.5 rounded-full border ${cls}`;
+      document.getElementById("metricStruct").textContent=result.struct;document.getElementById("metricStruct").style.color=SEV_COLORS[result.severity];
+      document.getElementById("metricRoof").textContent=result.roof;document.getElementById("metricRoof").style.color=SEV_COLORS[result.severity];
+      document.getElementById("metricFoundation").textContent=result.foundation;document.getElementById("metricFoundation").style.color=SEV_COLORS[result.severity];
+      document.getElementById("metricRisk").textContent=result.risk;document.getElementById("metricRisk").style.color=SEV_COLORS[result.severity];
+      document.getElementById("metricsGrid").classList.remove("hidden");
+      document.getElementById("resultActions").classList.remove("hidden");
+      addToHistory(file.name,src,result);
+    },2200);
+  };
+  reader.readAsDataURL(file);
+}
+
+function addToHistory(name,src,result){
+  assessmentHistory.unshift({name,src,result,time:new Date().toLocaleTimeString()});
+  renderHistory();
+}
+function renderHistory(){
+  const list=document.getElementById("historyList");
+  if(!assessmentHistory.length){list.innerHTML=`<div class="text-center py-8 text-on-surface-variant text-label-sm font-label-sm">No assessments yet.</div>`;return;}
+  list.innerHTML=assessmentHistory.map((a,i)=>`
+    <div class="history-item" onclick="showHistoryItem(${i})">
+      <img src="${a.src}" class="w-12 h-12 object-cover rounded-lg shrink-0 border border-outline-variant" alt=""/>
+      <div class="flex-1 min-w-0">
+        <div class="text-label-sm font-label-sm font-bold text-on-surface truncate">${a.name}</div>
+        <div class="text-xs text-on-surface-variant">${a.time}</div>
+      </div>
+      <span class="text-xs font-bold px-2 py-0.5 rounded-full border shrink-0 ${SEV_CLS[a.result.severity]}">${a.result.label}</span>
+    </div>`).join("");
+}
+function showHistoryItem(i){
+  const a=assessmentHistory[i];
+  document.getElementById("resultCard").classList.remove("hidden");
+  document.getElementById("resultImg").src=a.src;
+  document.getElementById("analysisStatus").textContent=`${a.result.label} Severity Damage Detected`;
+  document.getElementById("resultText").textContent=a.result.text;
+  document.getElementById("analysisSpinner").style.display="none";
+  document.getElementById("metricsGrid").classList.remove("hidden");
+  document.getElementById("resultActions").classList.remove("hidden");
+}
+function loadHistory(){assessmentHistory=[];renderHistory();}
+function clearHistory(){assessmentHistory=[];renderHistory();}
+function clearResult(){document.getElementById("resultCard").classList.add("hidden");document.getElementById("analysisSpinner").style.display="";}
+function reportToNDRF(){window.open("tel:1078");}
+function downloadReport(){alert("Report download — PDF generation would require backend integration with WeasyPrint or ReportLab.");}
+
+async function submitReport(){
+  const loc=document.getElementById("rptLocation").value.trim();
+  const type=document.getElementById("rptType").value;
+  const sev=document.getElementById("rptSeverity").value;
+  if(!loc)return alert("Please enter a location.");
+  try{
+    await fetch("/api/events/report",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:`${type} damage reported`,disaster_type:type,location:loc,lat:28.6139,lng:77.209,severity:sev})});
+  }catch(e){}
+  document.getElementById("reportMsg").classList.remove("hidden");document.getElementById("reportMsg").classList.add("flex");
+  setTimeout(()=>{document.getElementById("reportMsg").classList.add("hidden");document.getElementById("reportMsg").classList.remove("flex");},4000);
+  document.getElementById("rptLocation").value="";document.getElementById("rptNotes").value="";document.getElementById("rptReporter").value="";
+}
+function triggerSOS(){document.getElementById("sosModal").classList.remove("hidden");}
+function closeSOS(){document.getElementById("sosModal").classList.add("hidden");}
+</script>
+</body>
+</html>

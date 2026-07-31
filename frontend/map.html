@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rakshak AI - Live Disaster Map</title>
+<meta name="description" content="Rakshak AI live disaster map — view hazard zones, hospitals, shelters, and evacuation routes in real time."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="css/style.css?v=2"/>
+<script src="js/tailwind.config.js"></script>
+<style>
+  html,body{height:100%;overflow:hidden;}
+  #mapFull{height:calc(100vh - 64px);width:100%;position:relative;z-index:0;}
+  .panel{background:rgba(18,33,49,0.95);backdrop-filter:blur(12px);border:1px solid #45464d;}
+  .event-pill{display:flex;align-items:center;gap:6px;padding:8px 12px;background:#1c2b3c;border:1px solid #45464d;border-radius:8px;cursor:pointer;transition:border-color 0.2s;}
+  .event-pill:hover{border-color:#ffb95f;}
+  .layer-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #273647;}
+  .layer-row:last-child{border-bottom:none;}
+  @keyframes pulse-ring{0%{transform:scale(0.8);opacity:0.5}100%{transform:scale(2);opacity:0}}
+  .pulse-marker{position:relative}
+  .pulse-marker::before{content:'';position:absolute;inset:0;border-radius:50%;background-color:inherit;animation:pulse-ring 2s cubic-bezier(0.215,0.61,0.355,1) infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-spinner{width:18px;height:18px;border:2px solid #273647;border-top-color:#ffb95f;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block}
+  .leaflet-container{background:#010f1f!important}
+  .leaflet-tile{filter:brightness(0.75) saturate(0.6)}
+  .leaflet-popup-content-wrapper{background:#1c2b3c!important;color:#d4e4fa!important;border:1px solid #45464d!important;border-radius:8px!important;box-shadow:0 4px 16px rgba(0,0,0,0.6)!important}
+  .leaflet-popup-tip{background:#1c2b3c!important}
+  .leaflet-control-zoom a{background:#1c2b3c!important;color:#d4e4fa!important;border-color:#45464d!important}
+  .toggle-track{width:36px;height:20px;background:#273647;border-radius:10px;position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0}
+  .toggle-thumb{width:14px;height:14px;border-radius:50%;position:absolute;top:3px;transition:transform 0.2s}
+  .toggle-thumb.on{transform:translateX(18px)}
+  .toggle-thumb.off{transform:translateX(3px)}
+</style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased flex flex-col" style="height:100vh;overflow:hidden;">
+
+<div id="offlineBanner" class="hidden w-full bg-yellow-700 text-white py-1 px-4 text-center text-xs z-[100]">
+  <span class="material-symbols-outlined align-middle mr-1 text-sm">wifi_off</span>Offline — cached data
+</div>
+
+<!-- NAV -->
+<nav class="bg-background/95 backdrop-blur-md border-b border-outline-variant flex justify-between items-center w-full h-16 px-margin-desktop z-50 shrink-0">
+  <div class="flex items-center gap-4">
+    <img alt="Rakshak AI Logo" class="h-8" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS9WVsNI3SETZU0HIc2sVI4lwSSamXCn1dJAKHlTsFT160wRyOwXyGYH_yavV2aP1QeP7TnKTgv10k5SM1VIqSoKchCO7YaDVUi9m3Ri5GK06xXhfdySopf2f1EYo0-1fX8x4HRjk_c4LlDfboSzCgbn0rxX_B8eEY6F5ajk1XTv6KITHRqabO1qe-R_hS_SwFaGA_qGpECXAiyOI1ZO6j0Phg_mFQ7A9yG302QZJe-8Zjpc6QMsiP"/>
+    <span class="text-headline-md font-headline-md font-bold text-on-background">Rakshak AI</span>
+  </div>
+  <div class="hidden md:flex gap-6 items-center h-full">
+    <a class="nav-link" href="index.html">Dashboard</a>
+    <a class="text-tertiary border-b-2 border-tertiary pb-1 font-bold text-label-md font-label-md h-full flex items-center" href="map.html">Map</a>
+    <a class="nav-link" href="resources.html">Resources</a>
+    <a class="nav-link" href="assessment.html">Assessment</a>
+  </div>
+  <div class="flex items-center gap-4">
+    <select id="langSelect" class="sr-only"><option value="en-IN">English</option><option value="hi-IN">Hindi</option></select>
+    <div class="flex items-center gap-2 bg-surface-container border border-outline-variant rounded-lg px-3 py-1.5 text-label-sm font-label-sm text-on-surface-variant">
+      <div class="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></div>
+      <span id="mapStatus">Live Feed Active</span>
+    </div>
+    <button onclick="triggerSOS()" class="bg-secondary-container text-on-secondary-container px-6 py-2 rounded-full text-label-md font-label-md font-bold hover:bg-error-container transition-colors min-h-[48px] uppercase tracking-wider shadow-lg">SOS</button>
+  </div>
+</nav>
+
+<!-- MAP LAYOUT: full-screen with floating panels -->
+<div class="relative flex-1 overflow-hidden">
+  <!-- Full-screen Leaflet Map -->
+  <div id="mapFull"></div>
+
+  <!-- LEFT PANEL: Controls + Events -->
+  <div id="leftPanel" class="panel absolute top-4 left-4 rounded-xl w-72 max-h-[calc(100vh-100px)] flex flex-col overflow-hidden transition-transform" style="z-index:1001;">
+    <!-- Panel Header -->
+    <div class="flex items-center justify-between p-4 border-b border-outline-variant shrink-0">
+      <span class="text-label-md font-label-md font-bold text-on-surface">Command Panel</span>
+      <button onclick="togglePanel()" id="panelToggle" class="text-on-surface-variant hover:text-tertiary transition-colors">
+        <span class="material-symbols-outlined text-sm">chevron_left</span>
+      </button>
+    </div>
+
+    <div class="overflow-y-auto flex-1">
+      <!-- Predict Zone -->
+      <div class="p-4 border-b border-outline-variant">
+        <h3 class="text-label-md font-label-md font-bold text-on-surface mb-3">Predict Hazard Zone</h3>
+        <select id="disasterTypeSelect" class="w-full bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-label-md font-label-md text-on-surface focus:outline-none focus:border-tertiary mb-3">
+          <option value="flood">🌊 Flood</option>
+          <option value="fire">🔥 Fire</option>
+          <option value="earthquake">🌍 Earthquake</option>
+          <option value="cyclone">🌀 Cyclone</option>
+          <option value="landslide">⛰️ Landslide</option>
+        </select>
+        <p class="text-label-sm font-label-sm text-on-surface-variant mb-3">Click anywhere on the map to predict the hazard zone for that location.</p>
+        <button onclick="clearHazards()" class="w-full border border-outline-variant text-on-surface-variant py-2 rounded-lg text-label-sm font-label-sm hover:border-[#EF4444] hover:text-[#EF4444] transition-colors">
+          Clear All Zones
+        </button>
+      </div>
+
+      <!-- Layer Toggles -->
+      <div class="p-4 border-b border-outline-variant">
+        <h3 class="text-label-md font-label-md font-bold text-on-surface mb-3">Map Layers</h3>
+        <div class="layer-row">
+          <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#EF4444] shrink-0"></span><span class="text-label-sm font-label-sm text-on-surface">Hazard Zones</span></div>
+          <div class="relative" onclick="toggleLayer('hazards')"><div id="trackHazards" class="toggle-track on"></div><div id="thumbHazards" class="toggle-thumb bg-tertiary on"></div></div>
+        </div>
+        <div class="layer-row">
+          <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-[#10B981] shrink-0"></span><span class="text-label-sm font-label-sm text-on-surface">Hospitals</span></div>
+          <div class="relative" onclick="toggleLayer('hospitals')"><div id="trackHospitals" class="toggle-track on"></div><div id="thumbHospitals" class="toggle-thumb bg-tertiary on"></div></div>
+        </div>
+        <div class="layer-row">
+          <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-tertiary shrink-0" style="background:#ffb95f"></span><span class="text-label-sm font-label-sm text-on-surface">Shelters</span></div>
+          <div class="relative" onclick="toggleLayer('shelters')"><div id="trackShelters" class="toggle-track on"></div><div id="thumbShelters" class="toggle-thumb bg-tertiary on"></div></div>
+        </div>
+        <div class="mt-3">
+          <button onclick="locateMe()" class="w-full flex items-center justify-center gap-2 border border-tertiary text-tertiary py-2 rounded-lg text-label-sm font-label-sm hover:bg-tertiary/10 transition-colors">
+            <span class="material-symbols-outlined text-sm">my_location</span> Locate Me
+          </button>
+        </div>
+      </div>
+
+      <!-- Active Events -->
+      <div class="p-4">
+        <h3 class="text-label-md font-label-md font-bold text-on-surface mb-3">Active Events</h3>
+        <div id="eventsList" class="flex flex-col gap-2">
+          <div class="flex items-center justify-center py-4 gap-2 text-on-surface-variant"><div class="loading-spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP STATS BAR -->
+  <div class="absolute top-4 left-1/2 -translate-x-1/2 flex gap-2" style="z-index:1001;">
+    <div class="panel rounded-lg px-4 py-2 flex items-center gap-3">
+      <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-[#EF4444] animate-pulse"></div><span class="text-label-sm font-label-sm text-on-surface"><span id="statEvents">—</span> Events</span></div>
+      <div class="w-px h-4 bg-outline-variant"></div>
+      <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full bg-[#10B981]"></div><span class="text-label-sm font-label-sm text-on-surface"><span id="statHosp">—</span> Hospitals</span></div>
+      <div class="w-px h-4 bg-outline-variant"></div>
+      <div class="flex items-center gap-1.5"><div class="w-2 h-2 rounded-full" style="background:#ffb95f"></div><span class="text-label-sm font-label-sm text-on-surface"><span id="statShelt">—</span> Shelters</span></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM: Alert scroll -->
+  <div class="absolute bottom-0 left-0 right-0 bg-[#EF4444]/90 backdrop-blur text-white py-1.5 overflow-hidden flex items-center border-t border-[#B91C1C]" style="z-index:1001;">
+    <div class="absolute left-0 bg-[#EF4444] z-10 px-3 h-full flex items-center shadow-[8px_0_12px_-2px_rgba(239,68,68,1)]">
+      <span class="material-symbols-outlined mr-1 animate-pulse text-sm" style="font-variation-settings:'FILL' 1;">warning</span>
+      <span class="font-bold text-xs uppercase tracking-wider">ALERT</span>
+    </div>
+    <div class="ticker-outer" style="margin-left:120px"><div class="ticker-inner text-xs font-mono"><span id="alertTextMap">Loading alerts...</span><span id="alertTextMapB" aria-hidden="true">Loading alerts...</span></div></div>
+  </div>
+</div>
+
+<!-- SOS MODAL -->
+<div id="sosModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="bg-surface-container-high border border-[#EF4444]/50 rounded-xl p-6 max-w-sm w-full shadow-2xl">
+    <div class="flex items-center gap-3 mb-5"><div class="w-12 h-12 bg-[#EF4444] rounded-full flex items-center justify-center shadow-lg"><span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings:'FILL' 1">emergency</span></div><div><h2 class="text-headline-sm font-headline-sm text-[#EF4444]">SOS ACTIVATED</h2><p class="text-label-sm font-label-sm text-on-surface-variant">Select emergency service</p></div></div>
+    <div class="flex flex-col gap-3 mb-5">
+      <a href="tel:112" class="sos-btn bg-[#EF4444]"><span class="material-symbols-outlined text-[18px]">call</span>112 — National Emergency</a>
+      <a href="tel:101" class="sos-btn bg-orange-600"><span class="material-symbols-outlined text-[18px]">local_fire_department</span>101 — Fire</a>
+      <a href="tel:108" class="sos-btn bg-[#10B981]"><span class="material-symbols-outlined text-[18px]">ambulance</span>108 — Ambulance</a>
+      <a href="tel:1078" class="sos-btn bg-[#3B82F6]"><span class="material-symbols-outlined text-[18px]">flood</span>1078 — NDRF Helpline</a>
+    </div>
+    <button onclick="closeSOS()" class="w-full text-on-surface-variant text-label-sm font-label-sm hover:text-on-surface py-1">Close</button>
+  </div>
+</div>
+<!-- MOBILE NAV -->
+<nav class="bg-surface-container-highest fixed bottom-0 w-full rounded-t-xl z-50 border-t border-outline-variant shadow-lg lg:hidden h-20 flex justify-around items-center px-4">
+  <a href="index.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">home</span><span class="text-label-sm font-label-sm mt-1">Home</span></a>
+  <a href="map.html" class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 scale-110 min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">explore</span><span class="text-label-sm font-label-sm mt-1">Map</span></a>
+  <a href="resources.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">emergency_home</span><span class="text-label-sm font-label-sm mt-1">Resources</span></a>
+  <a href="assistant.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">graphic_eq</span><span class="text-label-sm font-label-sm mt-1">Assistant</span></a>
+</nav>
+
+<script src="js/api.js"></script>
+<script src="js/offline.js"></script>
+<script>
+// Map setup
+let map,layerState={hazards:true,hospitals:true,shelters:true,routes:true};
+let layers={hazards:L.layerGroup(),hospitals:L.layerGroup(),shelters:L.layerGroup(),routes:L.layerGroup()};
+const icons={
+  hospital:L.divIcon({className:"",html:`<div style="background:#10B981;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 8px #10B981"></div>`,iconSize:[12,12],iconAnchor:[6,6]}),
+  shelter:L.divIcon({className:"",html:`<div style="background:#ffb95f;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 8px #ffb95f"></div>`,iconSize:[12,12],iconAnchor:[6,6]}),
+  user:L.divIcon({className:"",html:`<div style="background:#3B82F6;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 12px #3B82F6"></div>`,iconSize:[14,14],iconAnchor:[7,7]})
+};
+
+document.addEventListener("DOMContentLoaded",async()=>{
+  setupOfflineHandlers();
+  map=L.map("mapFull",{center:[28.6139,77.209],zoom:12,zoomControl:true,attributionControl:false});
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18}).addTo(map);
+  Object.values(layers).forEach(lg=>lg.addTo(map));
+  map.on("click",onMapClick);
+  await Promise.all([loadMapFacilities(),loadMapEvents(),loadHazardZonesMap()]);
+});
+
+async function loadMapFacilities(){
+  try{
+    const data=await getAllFacilities();
+    const hosps=data.hospitals||[];
+    const shels=data.shelters||[];
+    hosps.forEach(f=>{if(!f.lat||!f.lng)return;L.marker([f.lat,f.lng],{icon:icons.hospital}).bindPopup(popupHosp(f)).addTo(layers.hospitals);});
+    shels.forEach(f=>{if(!f.lat||!f.lng)return;L.marker([f.lat,f.lng],{icon:icons.shelter}).bindPopup(popupShelt(f)).addTo(layers.shelters);});
+    document.getElementById("statHosp").textContent=hosps.filter(h=>h.is_open).length;
+    document.getElementById("statShelt").textContent=shels.filter(s=>s.is_open).length;
+  }catch(e){console.warn("Map facilities fail:",e);}
+}
+
+async function loadMapEvents(){
+  try{
+    const events=await getActiveEvents();
+    document.getElementById("statEvents").textContent=events.length;
+    const colors={high:"#EF4444",extreme:"#8B5CF6",moderate:"#F59E0B",low:"#10B981"};
+    const list=document.getElementById("eventsList");
+    if(!events.length){list.innerHTML=`<div class="text-label-sm font-label-sm text-on-surface-variant text-center py-2">No active events</div>`;return;}
+    list.innerHTML=events.map(e=>`
+      <div class="event-pill" onclick="flyTo(${e.lat},${e.lng})">
+        <div class="w-2 h-2 rounded-full shrink-0" style="background:${colors[e.severity]||'#F59E0B'}"></div>
+        <div><div class="text-label-sm font-label-sm font-bold text-on-surface">${e.title}</div><div class="text-xs text-on-surface-variant">${e.location}</div></div>
+      </div>`).join("");
+    // Add event markers
+    events.forEach(e=>{if(!e.lat||!e.lng)return;
+      L.circleMarker([e.lat,e.lng],{color:colors[e.severity]||"#F59E0B",fillColor:colors[e.severity]||"#F59E0B",fillOpacity:0.7,radius:8})
+       .bindPopup(`<strong>${e.title}</strong><br>${e.location}<br>Severity: <strong>${e.severity}</strong>`).addTo(layers.hazards);
+    });
+    // Update alert
+    const t=events.map(e=>`⚠ ${e.title} — ${e.location}`).join("   ·   ")+"   ";
+    document.getElementById("alertTextMap").textContent=t;
+    document.getElementById("alertTextMapB").textContent=t;
+  }catch(e){
+    const t="SEVERE WEATHER WARNING: Evacuation orders in effect. Seek shelter immediately.";
+    document.getElementById("alertTextMap").textContent=t;
+    document.getElementById("alertTextMapB").textContent=t;
+  }
+}
+
+async function loadHazardZonesMap(){
+  try{
+    const zones=await getHazardZones();
+    zones.forEach(z=>{
+      L.circle([z.center.lat,z.center.lng],{color:z.color||"#EF4444",fillColor:z.color||"#EF4444",fillOpacity:0.12,radius:z.radius_m,weight:1.5,dashArray:"4 4"})
+       .bindPopup(`<strong>${(z.disaster_type||"HAZARD").toUpperCase()} ZONE</strong><br>Risk: <strong>${z.risk_level?.toUpperCase()}</strong><br>Radius: ${(z.radius_m/1000).toFixed(1)} km`).addTo(layers.hazards);
+    });
+  }catch(e){console.warn("Hazard zones fail:",e);}
+}
+
+function onMapClick(e){
+  const{lat,lng}=e.latlng;
+  const type=document.getElementById("disasterTypeSelect").value;
+  predictAtPoint(lat,lng,type);
+}
+
+async function predictAtPoint(lat,lng,type){
+  try{
+    const zone=await predictZone(lat,lng,type);
+    L.circle([lat,lng],{color:zone.color||"#EF4444",fillColor:zone.color||"#EF4444",fillOpacity:0.15,radius:zone.radius_m,weight:1.5,dashArray:"4 4"})
+     .bindPopup(`<strong>${type.toUpperCase()} PREDICTION</strong><br>Risk: <strong>${zone.risk_level.toUpperCase()}</strong><br>Radius: ${(zone.radius_m/1000).toFixed(1)} km`).addTo(layers.hazards).openPopup();
+  }catch(e){console.warn("Predict fail:",e);}
+}
+
+function clearHazards(){layers.hazards.clearLayers();}
+
+function flyTo(lat,lng){if(lat&&lng)map.flyTo([lat,lng],14,{duration:1.5});}
+
+function locateMe(){
+  if(!navigator.geolocation)return alert("Geolocation not supported.");
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const{latitude:lat,longitude:lng}=pos.coords;
+    map.flyTo([lat,lng],14,{duration:1.5});
+    L.marker([lat,lng],{icon:icons.user}).bindPopup("<strong>Your Location</strong>").addTo(map).openPopup();
+  });
+}
+
+let layerStateMap={hazards:true,hospitals:true,shelters:true,routes:true};
+function toggleLayer(name){
+  layerStateMap[name]=!layerStateMap[name];
+  const cap=name[0].toUpperCase()+name.slice(1);
+  const track=document.getElementById("track"+cap),thumb=document.getElementById("thumb"+cap);
+  if(layerStateMap[name]){layers[name].addTo(map);if(track)track.classList.add("on");if(thumb){thumb.classList.add("on");thumb.classList.remove("off");}}
+  else{map.removeLayer(layers[name]);if(track)track.classList.remove("on");if(thumb){thumb.classList.remove("on");thumb.classList.add("off");}}
+}
+
+let panelOpen=true;
+function togglePanel(){
+  panelOpen=!panelOpen;
+  const p=document.getElementById("leftPanel"),t=document.getElementById("panelToggle");
+  p.style.transform=panelOpen?"translateX(0)":"translateX(-110%)";
+  t.innerHTML=`<span class="material-symbols-outlined text-sm">${panelOpen?"chevron_left":"chevron_right"}</span>`;
+}
+
+function popupHosp(f){return`<div style="font-family:Inter,sans-serif;font-size:12px;color:#d4e4fa;min-width:160px"><strong>${f.name}</strong><br><span style="color:#10B981">Beds: ${f.beds_available??'?'}</span> · <span style="color:${f.icu_available>0?'#10B981':'#EF4444'}">ICU: ${f.icu_available??'?'}</span><br><button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lng}&travelmode=driving','_blank')" style="margin-top:6px;background:#0f172a;color:#bec6e0;border:1px solid #45464d;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;width:100%">➤ Navigate</button></div>`;}
+function popupShelt(f){const av=f.capacity-f.occupied;return`<div style="font-family:Inter,sans-serif;font-size:12px;color:#d4e4fa;min-width:160px"><strong>${f.name}</strong><br><span style="color:${av>0?'#10B981':'#EF4444'}">${av}/${f.capacity} spaces</span><br><button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${f.lat},${f.lng}&travelmode=driving','_blank')" style="margin-top:6px;background:#0f172a;color:#bec6e0;border:1px solid #45464d;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;width:100%">➤ Navigate</button></div>`;}
+function triggerSOS(){document.getElementById("sosModal").classList.remove("hidden");}
+function closeSOS(){document.getElementById("sosModal").classList.add("hidden");}
+</script>
+</body>
+</html>

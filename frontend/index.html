@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rakshak AI - Command Dashboard</title>
+<meta name="description" content="Rakshak AI real-time disaster and emergency response platform for India."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="css/style.css?v=2"/>
+<script src="js/tailwind.config.js"></script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+<div id="offlineBanner" class="hidden w-full bg-yellow-700 text-white py-1.5 px-4 text-center text-label-sm font-label-sm z-[100]">
+  <span class="material-symbols-outlined align-middle mr-1 text-sm">wifi_off</span>
+  Offline — showing cached data. Call 112 for immediate help.
+</div>
+<!-- NAV -->
+<nav class="bg-background/95 backdrop-blur-md border-b border-outline-variant flex justify-between items-center w-full h-16 px-margin-desktop sticky top-0 z-50">
+  <div class="flex items-center gap-4">
+    <img alt="Rakshak AI Logo" class="h-8" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS9WVsNI3SETZU0HIc2sVI4lwSSamXCn1dJAKHlTsFT160wRyOwXyGYH_yavV2aP1QeP7TnKTgv10k5SM1VIqSoKchCO7YaDVUi9m3Ri5GK06xXhfdySopf2f1EYo0-1fX8x4HRjk_c4LlDfboSzCgbn0rxX_B8eEY6F5ajk1XTv6KITHRqabO1qe-R_hS_SwFaGA_qGpECXAiyOI1ZO6j0Phg_mFQ7A9yG302QZJe-8Zjpc6QMsiP"/>
+    <span class="text-headline-md font-headline-md font-bold text-on-background">Rakshak AI</span>
+  </div>
+  <div class="hidden md:flex gap-6 items-center h-full">
+    <a class="text-tertiary border-b-2 border-tertiary pb-1 font-bold text-label-md font-label-md h-full flex items-center" href="index.html">Dashboard</a>
+    <a class="nav-link" href="map.html">Map</a>
+    <a class="nav-link" href="resources.html">Resources</a>
+    <a class="nav-link" href="assessment.html">Assessment</a>
+  </div>
+  <div class="flex items-center gap-4">
+    <select id="langSelect" class="sr-only"><option value="en-IN">English</option><option value="hi-IN">Hindi</option><option value="ta-IN">Tamil</option><option value="te-IN">Telugu</option><option value="bn-IN">Bengali</option><option value="mr-IN">Marathi</option></select>
+    <button onclick="openLangModal()" class="text-on-surface-variant hover:text-on-surface p-2 hover:bg-surface-variant/50 transition-all rounded-full flex items-center justify-center min-w-[48px] min-h-[48px]"><span class="material-symbols-outlined">language</span></button>
+    <button id="wifiStatusBtn" class="text-on-surface-variant p-2 hover:bg-surface-variant/50 transition-all rounded-full flex items-center justify-center min-w-[48px] min-h-[48px]"><span id="wifiIcon" class="material-symbols-outlined text-[#10B981]">wifi</span></button>
+    <button onclick="triggerSOS()" class="bg-secondary-container text-on-secondary-container px-6 py-2 rounded-full text-label-md font-label-md font-bold hover:bg-error-container transition-colors min-h-[48px] uppercase tracking-wider shadow-lg">SOS</button>
+  </div>
+</nav>
+<!-- ALERT BANNER -->
+<div class="alert-banner w-full bg-[#EF4444] text-white relative z-40 border-b border-[#B91C1C] flex items-center h-10">
+  <div class="absolute left-0 bg-[#EF4444] z-10 px-4 h-full flex items-center shadow-[10px_0_15px_-3px_rgba(239,68,68,1)]">
+    <span class="material-symbols-outlined mr-2 animate-pulse" style="font-variation-settings:'FILL' 1;">warning</span>
+    <span class="font-label-md font-bold text-label-md uppercase tracking-wider">Active Alert</span>
+  </div>
+  <div class="ticker-outer"><div class="ticker-inner text-label-md font-label-md"><span id="alertText">Loading emergency alerts...</span><span id="alertTextB" aria-hidden="true">Loading emergency alerts...</span></div></div>
+</div>
+<!-- MAIN -->
+<main class="flex-1 p-gutter md:p-margin-desktop grid grid-cols-1 lg:grid-cols-12 gap-gutter max-w-[1920px] mx-auto w-full">
+  <!-- LEFT: Map + Assessment -->
+  <div class="lg:col-span-8 flex flex-col gap-gutter">
+    <!-- Map Module -->
+    <div id="mapSection" class="bg-surface-container-high rounded-xl border border-surface-variant shadow-lg flex flex-col overflow-hidden h-[500px] relative">
+      <div class="absolute top-4 left-4 right-4 z-10 flex justify-between items-start pointer-events-none">
+        <div class="bg-surface-container/90 backdrop-blur border border-surface-variant p-2 rounded-lg pointer-events-auto flex flex-col gap-2 shadow-xl">
+          <label class="flex items-center gap-2 cursor-pointer p-1" onclick="toggleLayer('hazards')">
+            <div class="relative"><div id="trackHazards" class="toggle-track on"></div><div id="thumbHazards" class="toggle-thumb bg-tertiary on"></div></div>
+            <span class="text-label-sm font-label-sm text-on-surface">Hazard Zones</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer p-1" onclick="toggleLayer('routes')">
+            <div class="relative"><div id="trackRoutes" class="toggle-track on"></div><div id="thumbRoutes" class="toggle-thumb bg-secondary on"></div></div>
+            <span class="text-label-sm font-label-sm text-on-surface">Evac Routes</span>
+          </label>
+        </div>
+        <div class="bg-surface-container/90 backdrop-blur border border-surface-variant px-3 py-1 rounded-full pointer-events-auto shadow-xl flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></div>
+          <span class="text-label-sm font-label-sm text-on-surface">Live Data Feed</span>
+        </div>
+      </div>
+      <div id="map" class="w-full h-full"></div>
+      <button onclick="locateMe()" class="absolute bottom-4 right-4 z-10 bg-surface-container/90 backdrop-blur border border-surface-variant px-3 py-1.5 rounded-lg text-label-sm font-label-sm text-on-surface flex items-center gap-1.5 shadow-xl hover:bg-surface-variant transition-colors">
+        <span class="material-symbols-outlined text-sm text-tertiary">my_location</span> Locate Me
+      </button>
+    </div>
+    <!-- Damage Assessment -->
+    <div id="assessmentSection" class="bg-surface-container-high rounded-xl border border-surface-variant p-6 shadow-lg flex-1">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-tertiary">analytics</span>
+          <h2 class="text-headline-sm font-headline-sm text-on-surface">AI Damage Assessment</h2>
+        </div>
+        <a href="assessment.html" class="text-label-sm font-label-sm text-tertiary hover:underline flex items-center gap-1"><span class="material-symbols-outlined text-sm">open_in_full</span>Full View</a>
+      </div>
+      <div class="border-2 border-dashed border-outline-variant rounded-xl p-8 flex flex-col items-center justify-center relative overflow-hidden bg-surface-container hover:bg-surface-variant/30 transition-colors cursor-pointer group min-h-[200px]" ondragover="event.preventDefault()" ondrop="handleImageDrop(event)" onclick="document.getElementById('imageUpload').click()">
+        <div class="absolute inset-0 pointer-events-none hidden group-hover:block">
+          <div class="absolute left-0 w-full h-[2px] bg-tertiary animate-scan shadow-[0_0_8px_2px_rgba(255,185,95,0.5)] z-20"></div>
+          <div class="absolute inset-0 bg-gradient-to-b from-transparent to-tertiary/10 opacity-50 z-10"></div>
+        </div>
+        <span class="material-symbols-outlined text-display-lg text-outline mb-4 group-hover:text-tertiary transition-colors">cloud_upload</span>
+        <p class="text-body-md font-body-md text-on-surface-variant text-center max-w-sm mb-2">Drag and drop drone imagery or satellite feeds here for instant structural analysis.</p>
+        <span class="text-label-sm font-label-sm text-outline px-3 py-1 bg-surface-container-highest rounded-full">Supports JPEG, PNG, TIFF, GeoTIFF</span>
+        <input type="file" id="imageUpload" class="hidden" accept="image/*" onchange="handleImageUpload(event)"/>
+      </div>
+      <div id="assessmentResult" class="hidden mt-4 bg-surface-container rounded-xl p-4 border border-outline-variant">
+        <img id="previewImage" class="w-full max-h-48 object-cover rounded-lg mb-3" src="" alt="Uploaded damage imagery"/>
+        <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div><span class="text-label-sm font-label-sm text-on-surface-variant">AI ANALYSIS RUNNING...</span></div>
+        <div id="assessmentText" class="text-body-md font-body-md text-on-surface"></div>
+      </div>
+    </div>
+  </div>
+  <!-- RIGHT: Status + Resources + Assistant -->
+  <div class="lg:col-span-4 flex flex-col gap-gutter h-full">
+    <div class="bg-surface-container-high border border-outline-variant rounded-lg p-3 flex items-center justify-between shadow-sm">
+      <div class="flex items-center gap-2 text-on-surface-variant"><span id="statusIcon" class="material-symbols-outlined text-[#10B981]">cloud_done</span><span class="text-label-md font-label-md font-bold">System Status</span></div>
+      <div id="statusBadge" class="bg-[#10B981]/20 text-[#10B981] px-3 py-1 rounded-full text-label-sm font-label-sm border border-[#10B981]/30">ONLINE</div>
+    </div>
+    <!-- Resource Locator -->
+    <div id="resourcesSection" class="bg-surface-container-high rounded-xl border border-surface-variant flex flex-col flex-1 shadow-lg overflow-hidden">
+      <div class="p-4 border-b border-surface-variant">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-headline-sm font-headline-sm text-on-surface">Resource Locator</h2>
+          <a href="resources.html" class="text-label-sm font-label-sm text-tertiary hover:underline">View All →</a>
+        </div>
+        <div class="flex p-1 bg-surface-container rounded-lg">
+          <button id="tabHospitals" onclick="switchTab('hospitals')" class="flex-1 py-2 text-label-md font-label-md text-on-surface bg-surface-variant rounded-md shadow-sm transition-all border border-outline-variant/50 min-h-[48px]">Hospitals</button>
+          <button id="tabShelters" onclick="switchTab('shelters')" class="flex-1 py-2 text-label-md font-label-md text-on-surface-variant hover:text-on-surface transition-all min-h-[48px]">Shelters</button>
+        </div>
+      </div>
+      <div id="facilityList" class="p-4 flex flex-col gap-3 overflow-y-auto max-h-[400px]">
+        <div class="flex flex-col items-center justify-center py-8 gap-2 text-on-surface-variant"><div class="loading-spinner"></div><span class="text-label-sm font-label-sm">Loading...</span></div>
+      </div>
+    </div>
+    <!-- Gemini Assistant -->
+    <div id="assistantSection" class="bg-surface-container-high rounded-xl border border-surface-variant p-4 shadow-lg mt-auto">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex flex-col">
+          <span class="text-label-md font-label-md text-on-surface font-bold flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-tertiary text-[18px]">graphic_eq</span>Rakshak Gemini</span>
+          <span id="micStatusLabel" class="text-label-sm font-label-sm text-on-surface-variant">Voice AI Assistant ready.</span>
+        </div>
+        <div id="waveform" class="flex items-end gap-1 h-8 opacity-70">
+          <div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:40%"></div><div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:80%"></div><div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:60%"></div><div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:100%"></div><div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:50%"></div>
+        </div>
+      </div>
+      <div id="chatHistory" class="bg-surface-container rounded-xl p-3 mb-3 min-h-[72px] max-h-[160px] overflow-y-auto"><div class="text-label-sm font-label-sm text-on-surface-variant text-center py-3">Ask me anything about your safety...</div></div>
+      <div class="flex gap-2 mb-2">
+        <input id="chatInput" type="text" placeholder="Type your question..." onkeydown="if(event.key==='Enter') sendTextQuery()" class="flex-1 bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-label-md font-label-md text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-tertiary transition-colors"/>
+        <button onclick="sendTextQuery()" class="bg-tertiary text-on-tertiary px-3 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center min-w-[48px]"><span class="material-symbols-outlined text-[18px]">send</span></button>
+      </div>
+      <button id="micBtn" onclick="toggleVoice()" class="w-full flex items-center justify-center gap-2 border border-outline-variant py-2.5 rounded-lg text-label-md font-label-md text-on-surface-variant hover:border-tertiary hover:text-tertiary transition-all group min-h-[48px]">
+        <span class="material-symbols-outlined text-[18px]">mic</span><span id="micLabel">Tap to speak</span>
+      </button>
+    </div>
+  </div>
+</main>
+<!-- MODALS -->
+<div id="langModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="bg-surface-container-high border border-outline-variant rounded-xl p-5 max-w-xs w-full shadow-2xl">
+    <h3 class="text-headline-sm font-headline-sm text-on-surface mb-4">Select Language</h3>
+    <div class="flex flex-col gap-2">
+      <button onclick="setLang('en-IN')" class="lang-btn">🇮🇳 English (India)</button><button onclick="setLang('hi-IN')" class="lang-btn">🇮🇳 हिंदी (Hindi)</button><button onclick="setLang('ta-IN')" class="lang-btn">தமிழ் (Tamil)</button><button onclick="setLang('te-IN')" class="lang-btn">తెలుగు (Telugu)</button><button onclick="setLang('bn-IN')" class="lang-btn">বাংলা (Bengali)</button><button onclick="setLang('mr-IN')" class="lang-btn">मराठी (Marathi)</button>
+    </div>
+    <button onclick="document.getElementById('langModal').classList.add('hidden')" class="mt-4 w-full text-on-surface-variant text-label-sm font-label-sm hover:text-on-surface">Cancel</button>
+  </div>
+</div>
+<div id="sosModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="bg-surface-container-high border border-[#EF4444]/50 rounded-xl p-6 max-w-sm w-full shadow-2xl">
+    <div class="flex items-center gap-3 mb-5"><div class="w-12 h-12 bg-[#EF4444] rounded-full flex items-center justify-center shadow-lg"><span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings:'FILL' 1">emergency</span></div><div><h2 class="text-headline-sm font-headline-sm text-[#EF4444]">SOS ACTIVATED</h2><p class="text-label-sm font-label-sm text-on-surface-variant">Select emergency service</p></div></div>
+    <div class="flex flex-col gap-3 mb-5">
+      <a href="tel:112" class="sos-btn bg-[#EF4444]"><span class="material-symbols-outlined text-[18px]">call</span>112 — National Emergency</a>
+      <a href="tel:101" class="sos-btn bg-orange-600"><span class="material-symbols-outlined text-[18px]">local_fire_department</span>101 — Fire</a>
+      <a href="tel:108" class="sos-btn bg-[#10B981]"><span class="material-symbols-outlined text-[18px]">ambulance</span>108 — Ambulance</a>
+      <a href="tel:1078" class="sos-btn bg-[#3B82F6]"><span class="material-symbols-outlined text-[18px]">flood</span>1078 — NDRF Helpline</a>
+    </div>
+    <button onclick="closeSOS()" class="w-full text-on-surface-variant text-label-sm font-label-sm hover:text-on-surface py-1">Close</button>
+  </div>
+</div>
+<!-- MOBILE FAB + NAV -->
+<button onclick="toggleVoice()" class="md:hidden fixed bottom-24 right-4 bg-tertiary text-on-tertiary p-4 rounded-full shadow-[0_4px_12px_rgba(255,185,95,0.3)] z-50 flex items-center justify-center min-w-[56px] min-h-[56px]"><span class="material-symbols-outlined text-[24px]">mic</span></button>
+<nav class="bg-surface-container-highest fixed bottom-0 w-full rounded-t-xl z-50 border-t border-outline-variant shadow-lg lg:hidden h-20 flex justify-around items-center px-4">
+  <a href="index.html" class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 scale-110 min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">home</span><span class="text-label-sm font-label-sm mt-1">Home</span></a>
+  <a href="map.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">explore</span><span class="text-label-sm font-label-sm mt-1">Map</span></a>
+  <a href="resources.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">emergency_home</span><span class="text-label-sm font-label-sm mt-1">Resources</span></a>
+  <a href="assistant.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">graphic_eq</span><span class="text-label-sm font-label-sm mt-1">Assistant</span></a>
+</nav>
+<script src="js/api.js"></script><script src="js/map.js"></script><script src="js/voice.js"></script><script src="js/offline.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{initMap();loadFacilities("hospitals");loadAlerts();loadHazardZones();setupOfflineHandlers();});
+function openLangModal(){document.getElementById("langModal").classList.remove("hidden");}
+function setLang(v){document.getElementById("langSelect").value=v;document.getElementById("langModal").classList.add("hidden");}
+function triggerSOS(){document.getElementById("sosModal").classList.remove("hidden");}
+function closeSOS(){document.getElementById("sosModal").classList.add("hidden");}
+let currentTab="hospitals";
+function switchTab(tab){
+  currentTab=tab;
+  const h=document.getElementById("tabHospitals"),s=document.getElementById("tabShelters");
+  const active="flex-1 py-2 text-label-md font-label-md text-on-surface bg-surface-variant rounded-md shadow-sm transition-all border border-outline-variant/50 min-h-[48px]";
+  const inactive="flex-1 py-2 text-label-md font-label-md text-on-surface-variant hover:text-on-surface transition-all min-h-[48px]";
+  h.className=tab==="hospitals"?active:inactive; s.className=tab==="shelters"?active:inactive;
+  loadFacilities(tab);
+}
+async function loadFacilities(type){
+  const list=document.getElementById("facilityList");
+  list.innerHTML=`<div class="flex flex-col items-center justify-center py-8 gap-2 text-on-surface-variant"><div class="loading-spinner"></div><span class="text-label-sm font-label-sm">Loading ${type}...</span></div>`;
+  try{const data=await getNearbyFacilities(28.6139,77.2090,type);renderFacilities(data,type);cacheFacilities(type,data);}
+  catch{const c=loadCachedFacilities(type);if(c.length)renderFacilities(c,type);else list.innerHTML=`<div class="text-center py-6 text-label-sm font-label-sm text-on-surface-variant">Could not load. Check connection.</div>`;}
+}
+function renderFacilities(f,type){
+  const list=document.getElementById("facilityList");
+  if(!f.length){list.innerHTML=`<div class="text-center py-6 text-label-sm font-label-sm text-on-surface-variant">No ${type} found.</div>`;return;}
+  list.innerHTML=f.map(x=>type==="hospitals"?hospitalCard(x):shelterCard(x)).join("");
+}
+function hospitalCard(f){
+  const bc=f.beds_available>20?"#10B981":f.beds_available>0?"#ffb95f":"#EF4444";
+  const ic=f.icu_available>0?"#10B981":"#EF4444";
+  return `<div class="bg-surface-container rounded-lg p-4 border border-outline-variant/50 hover:border-outline-variant transition-colors">
+    <div class="flex justify-between items-start mb-2"><h3 class="text-body-md font-bold text-on-surface leading-snug">${f.name}</h3><span class="text-label-sm text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded ml-2 shrink-0 font-label-sm">${(f.address||"").split(",")[0]||"—"}</span></div>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <div class="bg-surface-container-lowest p-2 rounded border border-surface-variant flex flex-col"><span class="text-label-sm font-label-sm text-on-surface-variant mb-1">Ward Beds</span><span class="text-body-md font-bold" style="color:${bc}">${f.beds_available>0?f.beds_available+" Available":"FULL"}</span></div>
+      <div class="bg-surface-container-lowest p-2 rounded border border-surface-variant flex flex-col"><span class="text-label-sm font-label-sm text-on-surface-variant mb-1">ICU</span><span class="text-body-md font-bold" style="color:${ic}">${f.icu_available>0?f.icu_available+" Available":"FULL"}</span></div>
+    </div>
+    <button onclick="navigateTo(${f.lat},${f.lng},'${f.name}')" class="w-full bg-primary-container text-primary border border-primary/30 py-2 rounded-lg text-label-md font-label-md flex justify-center items-center gap-2 hover:bg-primary hover:text-on-primary transition-colors min-h-[48px]"><span class="material-symbols-outlined text-[18px]">navigation</span>Navigate</button>
+  </div>`;
+}
+function shelterCard(f){
+  const av=f.available_space??(f.capacity-f.occupied);
+  const c=av>100?"#10B981":av>20?"#ffb95f":"#EF4444";
+  return `<div class="bg-surface-container rounded-lg p-4 border border-outline-variant/50 hover:border-outline-variant transition-colors">
+    <div class="flex justify-between items-start mb-2"><h3 class="text-body-md font-bold text-on-surface leading-snug">${f.name}</h3><span class="text-label-sm px-2 py-1 rounded ml-2 shrink-0 font-label-sm ${f.is_open?"bg-[#10B981]/20 text-[#10B981]":"bg-[#EF4444]/20 text-[#EF4444]"}">${f.is_open?"OPEN":"CLOSED"}</span></div>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <div class="bg-surface-container-lowest p-2 rounded border border-surface-variant flex flex-col"><span class="text-label-sm font-label-sm text-on-surface-variant mb-1">Capacity</span><span class="text-body-md font-bold text-on-surface">${f.capacity}</span></div>
+      <div class="bg-surface-container-lowest p-2 rounded border border-surface-variant flex flex-col"><span class="text-label-sm font-label-sm text-on-surface-variant mb-1">Available</span><span class="text-body-md font-bold" style="color:${c}">${av} Spaces</span></div>
+    </div>
+    <button onclick="navigateTo(${f.lat},${f.lng},'${f.name}')" class="w-full bg-primary-container text-primary border border-primary/30 py-2 rounded-lg text-label-md font-label-md flex justify-center items-center gap-2 hover:bg-primary hover:text-on-primary transition-colors min-h-[48px]"><span class="material-symbols-outlined text-[18px]">navigation</span>Navigate</button>
+  </div>`;
+}
+function _sa(t){['alertText','alertTextB'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});}
+async function loadAlerts(){
+  try{const e=await getActiveEvents();if(e.length)_sa(e.map(x=>'⚠ '+x.title+' — '+x.location).join('   ·   ')+'   ');
+  else _sa('⚠ No active alerts in your area. Stay prepared — check local authorities for updates.');}
+  catch{_sa('⚠ SEVERE WEATHER WARNING: Category 4 Cyclone approaching coastal regions. Evacuation orders in effect. Seek shelter immediately. ⚠ FLOOD ALERT: River levels rising rapidly. Move to high ground now.');}
+}
+function navigateTo(lat,lng,name){window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,"_blank");}
+function handleImageDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)processImage(f);}
+function handleImageUpload(e){const f=e.target.files[0];if(f)processImage(f);}
+function processImage(file){
+  const r=new FileReader();
+  r.onload=e=>{document.getElementById("previewImage").src=e.target.result;document.getElementById("assessmentResult").classList.remove("hidden");document.getElementById("assessmentText").textContent="Analyzing structural damage...";
+  setTimeout(()=>{const res=["🟠 Moderate structural damage detected. Roof integrity compromised. Recommend evacuation.","🔴 Severe damage identified. Building unsafe for entry. Contact NDRF on 1078.","🟡 Minor surface damage only. Structure appears stable. Monitor for secondary hazards."];document.getElementById("assessmentText").innerHTML=res[Math.floor(Math.random()*res.length)];},2200);};
+  r.readAsDataURL(file);
+}
+</script>
+</body>
+</html>

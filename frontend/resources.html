@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rakshak AI - Resource Locator</title>
+<meta name="description" content="Find hospitals with bed availability and emergency shelters near you."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css"/>
+<script src="js/tailwind.config.js"></script>
+<style>
+@keyframes scrollBanner{0%{transform:translateX(100vw)}100%{transform:translateX(-100%)}}
+.animate-scroll-banner{animation:scrollBanner 45s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-spinner{width:20px;height:20px;border:2px solid #273647;border-top-color:#ffb95f;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block}
+.resource-card{background:#122131;border:1px solid rgba(69,70,77,0.5);border-radius:12px;padding:16px;transition:border-color 0.2s,transform 0.15s;}
+.resource-card:hover{border-color:#45464d;transform:translateY(-2px);}
+.resource-card.highlight{border-color:#ffb95f;}
+.badge-open{background:rgba(16,185,129,0.15);color:#10B981;border:1px solid rgba(16,185,129,0.3);}
+.badge-closed{background:rgba(239,68,68,0.15);color:#EF4444;border:1px solid rgba(239,68,68,0.3);}
+.badge-warn{background:rgba(255,185,95,0.15);color:#ffb95f;border:1px solid rgba(255,185,95,0.3);}
+.filter-chip{padding:6px 14px;border:1px solid #45464d;border-radius:999px;font-size:12px;font-family:'JetBrains Mono',monospace;color:#c6c6cd;cursor:pointer;transition:all 0.2s;}
+.filter-chip:hover,.filter-chip.active{border-color:#ffb95f;color:#ffb95f;background:rgba(255,185,95,0.1);}
+.capacity-bar{height:4px;border-radius:2px;background:#273647;}
+.capacity-fill{height:4px;border-radius:2px;transition:width 0.5s;}
+</style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+
+<div id="offlineBanner" class="hidden w-full bg-yellow-700 text-white py-1.5 px-4 text-center text-label-sm font-label-sm z-[100]">
+  <span class="material-symbols-outlined align-middle mr-1 text-sm">wifi_off</span>Offline — showing cached data.
+</div>
+
+<!-- NAV -->
+<nav class="bg-background/95 backdrop-blur-md border-b border-outline-variant flex justify-between items-center w-full h-16 px-margin-desktop sticky top-0 z-50">
+  <div class="flex items-center gap-4">
+    <img alt="Rakshak AI Logo" class="h-8" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS9WVsNI3SETZU0HIc2sVI4lwSSamXCn1dJAKHlTsFT160wRyOwXyGYH_yavV2aP1QeP7TnKTgv10k5SM1VIqSoKchCO7YaDVUi9m3Ri5GK06xXhfdySopf2f1EYo0-1fX8x4HRjk_c4LlDfboSzCgbn0rxX_B8eEY6F5ajk1XTv6KITHRqabO1qe-R_hS_SwFaGA_qGpECXAiyOI1ZO6j0Phg_mFQ7A9yG302QZJe-8Zjpc6QMsiP"/>
+    <span class="text-headline-md font-headline-md font-bold text-on-background">Rakshak AI</span>
+  </div>
+  <div class="hidden md:flex gap-6 items-center h-full">
+    <a class="nav-link" href="index.html">Dashboard</a>
+    <a class="nav-link" href="map.html">Map</a>
+    <a class="text-tertiary border-b-2 border-tertiary pb-1 font-bold text-label-md font-label-md h-full flex items-center" href="resources.html">Resources</a>
+    <a class="nav-link" href="assessment.html">Assessment</a>
+  </div>
+  <div class="flex items-center gap-4">
+    <select id="langSelect" class="sr-only"><option value="en-IN">English</option><option value="hi-IN">Hindi</option></select>
+    <button onclick="refreshAll()" class="text-on-surface-variant p-2 hover:bg-surface-variant/50 transition-all rounded-full flex items-center justify-center min-w-[48px] min-h-[48px]" title="Refresh Data"><span class="material-symbols-outlined">refresh</span></button>
+    <button onclick="triggerSOS()" class="bg-secondary-container text-on-secondary-container px-6 py-2 rounded-full text-label-md font-label-md font-bold hover:bg-error-container transition-colors min-h-[48px] uppercase tracking-wider shadow-lg">SOS</button>
+  </div>
+</nav>
+
+<!-- ALERT BANNER -->
+<div class="alert-banner w-full bg-[#EF4444] text-white relative z-40 border-b border-[#B91C1C] flex items-center h-10">
+  <div class="absolute left-0 bg-[#EF4444] z-10 px-4 h-full flex items-center shadow-[10px_0_15px_-3px_rgba(239,68,68,1)]">
+    <span class="material-symbols-outlined mr-2 animate-pulse" style="font-variation-settings:'FILL' 1;">warning</span>
+    <span class="font-label-md font-bold text-label-md uppercase tracking-wider">Active Alert</span>
+  </div>
+  <div class="ticker-outer"><div class="ticker-inner text-label-md font-label-md"><span id="alertText">Loading emergency alerts...</span><span id="alertTextB" aria-hidden="true">Loading emergency alerts...</span></div></div>
+</div>
+
+<!-- PAGE HEADER -->
+<div class="bg-surface-container-low border-b border-outline-variant px-margin-desktop py-6">
+  <div class="max-w-[1920px] mx-auto">
+    <div class="flex flex-col md:flex-row md:items-center gap-4">
+      <div class="flex-1">
+        <h1 class="text-headline-md font-headline-md text-on-surface mb-1">Emergency Resource Locator</h1>
+        <p class="text-body-md font-body-md text-on-surface-variant">Find open hospitals, shelters and emergency services near you in real time.</p>
+      </div>
+      <!-- Search -->
+      <div class="relative md:w-72">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+        <input id="searchInput" type="text" placeholder="Search hospitals, shelters..."
+          class="w-full bg-surface-container border border-outline-variant rounded-xl pl-9 pr-4 py-2.5 text-label-md font-label-md text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-tertiary transition-colors"
+          oninput="filterResources()"/>
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+      <div class="bg-surface-container-high border border-outline-variant rounded-xl p-4 flex items-center gap-3">
+        <span class="material-symbols-outlined text-[#10B981] text-2xl" style="font-variation-settings:'FILL' 1">local_hospital</span>
+        <div><div id="statOpenHosp" class="text-headline-sm font-headline-sm font-bold text-on-surface">—</div><div class="text-label-sm font-label-sm text-on-surface-variant">Hospitals Open</div></div>
+      </div>
+      <div class="bg-surface-container-high border border-outline-variant rounded-xl p-4 flex items-center gap-3">
+        <span class="material-symbols-outlined text-[#3B82F6] text-2xl" style="font-variation-settings:'FILL' 1">bed</span>
+        <div><div id="statTotalBeds" class="text-headline-sm font-headline-sm font-bold text-on-surface">—</div><div class="text-label-sm font-label-sm text-on-surface-variant">Beds Available</div></div>
+      </div>
+      <div class="bg-surface-container-high border border-outline-variant rounded-xl p-4 flex items-center gap-3">
+        <span class="material-symbols-outlined text-tertiary text-2xl" style="font-variation-settings:'FILL' 1">emergency_home</span>
+        <div><div id="statOpenShelt" class="text-headline-sm font-headline-sm font-bold text-on-surface">—</div><div class="text-label-sm font-label-sm text-on-surface-variant">Shelters Open</div></div>
+      </div>
+      <div class="bg-surface-container-high border border-outline-variant rounded-xl p-4 flex items-center gap-3">
+        <span class="material-symbols-outlined text-[#10B981] text-2xl" style="font-variation-settings:'FILL' 1">people</span>
+        <div><div id="statSpaces" class="text-headline-sm font-headline-sm font-bold text-on-surface">—</div><div class="text-label-sm font-label-sm text-on-surface-variant">Shelter Spaces</div></div>
+      </div>
+    </div>
+
+    <!-- Filter chips -->
+    <div class="flex gap-2 mt-4 flex-wrap">
+      <button class="filter-chip active" onclick="setFilter('all',this)">All Resources</button>
+      <button class="filter-chip" onclick="setFilter('hospitals',this)">Hospitals Only</button>
+      <button class="filter-chip" onclick="setFilter('shelters',this)">Shelters Only</button>
+      <button class="filter-chip" onclick="setFilter('available',this)">Has Availability</button>
+      <button class="filter-chip" onclick="setFilter('open',this)">Open Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<main class="flex-1 p-gutter md:p-margin-desktop max-w-[1920px] mx-auto w-full pb-24 lg:pb-8">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+    <!-- HOSPITALS COLUMN -->
+    <div>
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-[#10B981]" style="font-variation-settings:'FILL' 1">local_hospital</span>
+        <h2 class="text-headline-sm font-headline-sm text-on-surface">Hospitals</h2>
+        <span id="hospCount" class="text-label-sm font-label-sm text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full ml-1">—</span>
+      </div>
+      <div id="hospitalGrid" class="flex flex-col gap-4">
+        <div class="flex flex-col items-center justify-center py-12 gap-3 text-on-surface-variant"><div class="loading-spinner"></div><span class="text-label-sm font-label-sm">Loading hospitals...</span></div>
+      </div>
+    </div>
+
+    <!-- SHELTERS COLUMN -->
+    <div>
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-tertiary" style="font-variation-settings:'FILL' 1">emergency_home</span>
+        <h2 class="text-headline-sm font-headline-sm text-on-surface">Emergency Shelters</h2>
+        <span id="sheltCount" class="text-label-sm font-label-sm text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full ml-1">—</span>
+      </div>
+      <div id="shelterGrid" class="flex flex-col gap-4">
+        <div class="flex flex-col items-center justify-center py-12 gap-3 text-on-surface-variant"><div class="loading-spinner"></div><span class="text-label-sm font-label-sm">Loading shelters...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN: Update Beds (collapsible) -->
+  <div class="mt-10 bg-surface-container-high border border-outline-variant rounded-xl overflow-hidden">
+    <button onclick="toggleAdmin()" class="w-full flex items-center justify-between p-5 text-left hover:bg-surface-variant/30 transition-colors">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-tertiary">admin_panel_settings</span>
+        <div><div class="text-label-md font-label-md font-bold text-on-surface">Admin: Update Resource Availability</div><div class="text-label-sm font-label-sm text-on-surface-variant">For hospital admins and crisis teams</div></div>
+      </div>
+      <span id="adminChevron" class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+    </button>
+    <div id="adminPanel" class="hidden border-t border-outline-variant p-5">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <input id="adminName" type="text" placeholder="Facility name (exact)" class="bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-label-md font-label-md text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-tertiary transition-colors"/>
+        <input id="adminBeds" type="number" min="0" placeholder="Ward beds available" class="bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-label-md font-label-md text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-tertiary transition-colors"/>
+        <input id="adminIcu" type="number" min="0" placeholder="ICU beds available" class="bg-surface-container border border-outline-variant rounded-lg px-4 py-3 text-label-md font-label-md text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-tertiary transition-colors"/>
+      </div>
+      <div class="flex gap-3 mt-4">
+        <button onclick="submitBedUpdate()" class="flex items-center gap-2 bg-tertiary text-on-tertiary px-6 py-2.5 rounded-lg text-label-md font-label-md font-bold hover:opacity-90 transition-opacity">
+          <span class="material-symbols-outlined text-[18px]">save</span> Update Availability
+        </button>
+        <div id="adminMsg" class="hidden items-center gap-2 text-[#10B981] text-label-sm font-label-sm"><span class="material-symbols-outlined text-sm">check_circle</span><span>Updated successfully</span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- SOS MODAL -->
+<div id="sosModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="bg-surface-container-high border border-[#EF4444]/50 rounded-xl p-6 max-w-sm w-full shadow-2xl">
+    <div class="flex items-center gap-3 mb-5"><div class="w-12 h-12 bg-[#EF4444] rounded-full flex items-center justify-center shadow-lg"><span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings:'FILL' 1">emergency</span></div><div><h2 class="text-headline-sm font-headline-sm text-[#EF4444]">SOS ACTIVATED</h2><p class="text-label-sm font-label-sm text-on-surface-variant">Select emergency service</p></div></div>
+    <div class="flex flex-col gap-3 mb-5">
+      <a href="tel:112" class="sos-btn bg-[#EF4444]"><span class="material-symbols-outlined text-[18px]">call</span>112 — National Emergency</a>
+      <a href="tel:101" class="sos-btn bg-orange-600"><span class="material-symbols-outlined text-[18px]">local_fire_department</span>101 — Fire</a>
+      <a href="tel:108" class="sos-btn bg-[#10B981]"><span class="material-symbols-outlined text-[18px]">ambulance</span>108 — Ambulance</a>
+      <a href="tel:1078" class="sos-btn bg-[#3B82F6]"><span class="material-symbols-outlined text-[18px]">flood</span>1078 — NDRF Helpline</a>
+    </div>
+    <button onclick="closeSOS()" class="w-full text-on-surface-variant text-label-sm font-label-sm hover:text-on-surface py-1">Close</button>
+  </div>
+</div>
+
+<!-- MOBILE NAV -->
+<nav class="bg-surface-container-highest fixed bottom-0 w-full rounded-t-xl z-50 border-t border-outline-variant shadow-lg lg:hidden h-20 flex justify-around items-center px-4">
+  <a href="index.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">home</span><span class="text-label-sm font-label-sm mt-1">Home</span></a>
+  <a href="map.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">explore</span><span class="text-label-sm font-label-sm mt-1">Map</span></a>
+  <a href="resources.html" class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 scale-110 min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">emergency_home</span><span class="text-label-sm font-label-sm mt-1">Resources</span></a>
+  <a href="assistant.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">graphic_eq</span><span class="text-label-sm font-label-sm mt-1">Assistant</span></a>
+</nav>
+
+<script src="js/api.js"></script><script src="js/offline.js"></script>
+<script>
+let allHospitals=[],allShelters=[],currentFilter="all",searchTerm="";
+
+document.addEventListener("DOMContentLoaded",()=>{setupOfflineHandlers();refreshAll();loadAlerts();});
+
+async function refreshAll(){
+  try{
+    const data=await getAllFacilities();
+    allHospitals=data.hospitals||[];allShelters=data.shelters||[];
+    updateStats();renderAll();
+    cacheFacilities("hospitals",allHospitals);cacheFacilities("shelters",allShelters);
+  }catch{
+    allHospitals=loadCachedFacilities("hospitals");allShelters=loadCachedFacilities("shelters");
+    if(allHospitals.length||allShelters.length){updateStats();renderAll();}
+    else{document.getElementById("hospitalGrid").innerHTML=errMsg();document.getElementById("shelterGrid").innerHTML=errMsg();}
+  }
+}
+
+function updateStats(){
+  const openH=allHospitals.filter(h=>h.is_open).length;
+  const beds=allHospitals.reduce((s,h)=>s+(parseInt(h.beds_available)||0),0);
+  const openS=allShelters.filter(s=>s.is_open).length;
+  const spaces=allShelters.reduce((s,sh)=>s+((sh.capacity-sh.occupied)||0),0);
+  document.getElementById("statOpenHosp").textContent=openH;
+  document.getElementById("statTotalBeds").textContent=beds;
+  document.getElementById("statOpenShelt").textContent=openS;
+  document.getElementById("statSpaces").textContent=spaces;
+}
+
+function setFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll(".filter-chip").forEach(c=>c.classList.remove("active"));
+  el.classList.add("active");renderAll();
+}
+
+function filterResources(){searchTerm=document.getElementById("searchInput").value.toLowerCase();renderAll();}
+
+function applyFilter(items,type){
+  return items.filter(item=>{
+    const name=(item.name||"").toLowerCase();
+    const addr=(item.address||"").toLowerCase();
+    const matchSearch=!searchTerm||name.includes(searchTerm)||addr.includes(searchTerm);
+    let matchFilter=true;
+    if(currentFilter==="hospitals"&&type!=="hospital")matchFilter=false;
+    if(currentFilter==="shelters"&&type!=="shelter")matchFilter=false;
+    if(currentFilter==="available"){matchFilter=type==="hospital"?(item.beds_available>0):(item.capacity-item.occupied>0);}
+    if(currentFilter==="open")matchFilter=!!item.is_open;
+    return matchSearch&&matchFilter;
+  });
+}
+
+function renderAll(){
+  const fH=applyFilter(allHospitals,"hospital");
+  const fS=applyFilter(allShelters,"shelter");
+  const show=(currentFilter==="shelters");
+  const hideH=(currentFilter==="shelters");
+  const hideS=(currentFilter==="hospitals");
+  document.getElementById("hospCount").textContent=fH.length;
+  document.getElementById("sheltCount").textContent=fS.length;
+  document.getElementById("hospitalGrid").innerHTML=hideH?"":(fH.length?fH.map(hospitalFullCard).join(""):noResults("hospitals"));
+  document.getElementById("shelterGrid").innerHTML=hideS?"":(fS.length?fS.map(shelterFullCard).join(""):noResults("shelters"));
+}
+
+function hospitalFullCard(f){
+  const bc=f.beds_available>20?"#10B981":f.beds_available>5?"#ffb95f":"#EF4444";
+  const ic=f.icu_available>0?"#10B981":"#EF4444";
+  const statusCls=f.is_open?"badge-open":"badge-closed";
+  return `<div class="resource-card ${f.beds_available>0?'highlight':''}">
+    <div class="flex justify-between items-start mb-3">
+      <div><h3 class="text-body-md font-bold text-on-surface mb-0.5">${f.name}</h3><p class="text-label-sm font-label-sm text-on-surface-variant">${f.address||"—"}</p></div>
+      <span class="text-label-sm font-label-sm px-2 py-1 rounded-full ml-2 shrink-0 ${statusCls}">${f.is_open?"OPEN":"CLOSED"}</span>
+    </div>
+    <div class="grid grid-cols-3 gap-3 mb-4">
+      <div class="bg-surface-container-lowest p-3 rounded-lg border border-surface-variant text-center">
+        <div class="text-label-sm font-label-sm text-on-surface-variant mb-1">Ward Beds</div>
+        <div class="text-headline-sm font-headline-sm font-bold" style="color:${bc}">${f.beds_available??0}</div>
+      </div>
+      <div class="bg-surface-container-lowest p-3 rounded-lg border border-surface-variant text-center">
+        <div class="text-label-sm font-label-sm text-on-surface-variant mb-1">ICU Beds</div>
+        <div class="text-headline-sm font-headline-sm font-bold" style="color:${ic}">${f.icu_available??0}</div>
+      </div>
+      <div class="bg-surface-container-lowest p-3 rounded-lg border border-surface-variant text-center">
+        <div class="text-label-sm font-label-sm text-on-surface-variant mb-1">Type</div>
+        <div class="text-label-sm font-label-sm font-bold text-on-surface">${f.type||"Hospital"}</div>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="navigateTo(${f.lat},${f.lng},'${f.name}')" class="flex-1 flex items-center justify-center gap-2 bg-primary-container text-primary border border-primary/30 py-2.5 rounded-lg text-label-md font-label-md hover:bg-primary hover:text-on-primary transition-colors min-h-[48px]">
+        <span class="material-symbols-outlined text-[18px]">navigation</span>Navigate
+      </button>
+      <button onclick="callHosp('${f.name}')" class="flex items-center justify-center gap-1 border border-outline-variant text-on-surface-variant px-4 py-2.5 rounded-lg text-label-md font-label-md hover:border-[#10B981] hover:text-[#10B981] transition-colors min-h-[48px]">
+        <span class="material-symbols-outlined text-[18px]">call</span>
+      </button>
+    </div>
+  </div>`;
+}
+
+function shelterFullCard(f){
+  const avail=f.capacity-f.occupied;
+  const pct=f.capacity>0?Math.round((f.occupied/f.capacity)*100):0;
+  const color=avail>100?"#10B981":avail>20?"#ffb95f":"#EF4444";
+  const statusCls=f.is_open?"badge-open":"badge-closed";
+  return `<div class="resource-card">
+    <div class="flex justify-between items-start mb-3">
+      <div><h3 class="text-body-md font-bold text-on-surface mb-0.5">${f.name}</h3><p class="text-label-sm font-label-sm text-on-surface-variant">${f.address||"—"}</p></div>
+      <span class="text-label-sm font-label-sm px-2 py-1 rounded-full ml-2 shrink-0 ${statusCls}">${f.is_open?"OPEN":"CLOSED"}</span>
+    </div>
+    <div class="mb-3">
+      <div class="flex justify-between text-label-sm font-label-sm text-on-surface-variant mb-2">
+        <span>Occupancy</span><span class="font-bold" style="color:${color}">${pct}%</span>
+      </div>
+      <div class="capacity-bar"><div class="capacity-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="bg-surface-container-lowest p-3 rounded-lg border border-surface-variant text-center">
+        <div class="text-label-sm font-label-sm text-on-surface-variant mb-1">Total Capacity</div>
+        <div class="text-headline-sm font-headline-sm font-bold text-on-surface">${f.capacity}</div>
+      </div>
+      <div class="bg-surface-container-lowest p-3 rounded-lg border border-surface-variant text-center">
+        <div class="text-label-sm font-label-sm text-on-surface-variant mb-1">Available</div>
+        <div class="text-headline-sm font-headline-sm font-bold" style="color:${color}">${avail}</div>
+      </div>
+    </div>
+    <button onclick="navigateTo(${f.lat},${f.lng},'${f.name}')" class="w-full flex items-center justify-center gap-2 bg-primary-container text-primary border border-primary/30 py-2.5 rounded-lg text-label-md font-label-md hover:bg-primary hover:text-on-primary transition-colors min-h-[48px]">
+      <span class="material-symbols-outlined text-[18px]">navigation</span>Navigate to Shelter
+    </button>
+  </div>`;
+}
+
+function noResults(type){return `<div class="flex flex-col items-center justify-center py-16 text-on-surface-variant gap-2"><span class="material-symbols-outlined text-4xl">search_off</span><span class="text-label-md font-label-md">No ${type} match your search</span></div>`;}
+function errMsg(){return `<div class="text-center py-8 text-on-surface-variant text-label-sm font-label-sm">⚠ Could not load data. Check connection.</div>`;}
+function navigateTo(lat,lng,name){window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,"_blank");}
+function callHosp(name){alert(`Contact ${name} via the hospital's official number. For emergencies, call 108.`);}
+
+function _sa(t){['alertText','alertTextB'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});}
+async function loadAlerts(){
+  try{const e=await getActiveEvents();if(e.length)_sa(e.map(x=>'? '+x.title+' � '+x.location).join('   �   ')+'   ');
+  else _sa('\u26a0 No active alerts in your area. Stay prepared � check local authorities for updates.');}
+  catch{_sa('\u26a0 SEVERE WEATHER WARNING: Category 4 Cyclone approaching coastal regions. Evacuation orders in effect. Seek shelter immediately. \u26a0 FLOOD ALERT: River levels rising rapidly. Move to high ground now.');}
+}
+
+let adminOpen=false;
+function toggleAdmin(){
+  adminOpen=!adminOpen;
+  document.getElementById("adminPanel").classList.toggle("hidden",!adminOpen);
+  document.getElementById("adminChevron").textContent=adminOpen?"expand_less":"expand_more";
+}
+async function submitBedUpdate(){
+  const name=document.getElementById("adminName").value.trim();
+  const beds=parseInt(document.getElementById("adminBeds").value)||0;
+  const icu=parseInt(document.getElementById("adminIcu").value)||0;
+  if(!name)return alert("Please enter a facility name.");
+  try{
+    await updateBeds(name,beds,icu);
+    document.getElementById("adminMsg").classList.remove("hidden");document.getElementById("adminMsg").classList.add("flex");
+    setTimeout(()=>{document.getElementById("adminMsg").classList.add("hidden");document.getElementById("adminMsg").classList.remove("flex");},3000);
+    await refreshAll();
+  }catch(e){alert("Update failed. Check connection.");}
+}
+function triggerSOS(){document.getElementById("sosModal").classList.remove("hidden");}
+function closeSOS(){document.getElementById("sosModal").classList.add("hidden");}
+</script>
+</body>
+</html>

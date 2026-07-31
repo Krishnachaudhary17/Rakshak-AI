@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Rakshak AI - Emergency Assistant</title>
+<meta name="description" content="Rakshak Gemini — AI-powered multilingual emergency assistant for disaster response."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css"/>
+<script src="js/tailwind.config.js"></script>
+<style>
+@keyframes scrollBanner{0%{transform:translateX(100vw)}100%{transform:translateX(-100%)}}
+.animate-scroll-banner{animation:scrollBanner 45s linear infinite}
+@keyframes waveform{0%,100%{height:20%}50%{height:100%}}
+.wave-bar{animation:waveform 1s ease-in-out infinite}
+.wave-bar:nth-child(2){animation-delay:0.2s}.wave-bar:nth-child(3){animation-delay:0.4s}.wave-bar:nth-child(4){animation-delay:0.1s}.wave-bar:nth-child(5){animation-delay:0.3s}
+@keyframes recordingPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,0.4)}50%{box-shadow:0 0 0 16px rgba(239,68,68,0)}}
+.recording-pulse{animation:recordingPulse 1.2s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-spinner{width:18px;height:18px;border:2px solid #273647;border-top-color:#ffb95f;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.msg-appear{animation:fadeInUp 0.3s ease forwards}
+.chat-user{background:#0f172a;border:1px solid #45464d;border-radius:16px 16px 4px 16px;padding:10px 14px;font-size:14px;color:#d4e4fa;align-self:flex-end;max-width:85%}
+.chat-ai{background:#1a1000;border:1px solid rgba(255,185,95,0.2);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:14px;color:#d4e4fa;align-self:flex-start;max-width:85%}
+.quick-chip{padding:8px 16px;border:1px solid #45464d;border-radius:999px;font-size:12px;font-family:'JetBrains Mono',monospace;color:#c6c6cd;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+.quick-chip:hover{border-color:#ffb95f;color:#ffb95f;background:rgba(255,185,95,0.08)}
+.lang-option{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#122131;border:1px solid #45464d;border-radius:10px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:13px;color:#d4e4fa;transition:border-color 0.2s}
+.lang-option:hover,.lang-option.active{border-color:#ffb95f;background:#1c2b3c}
+</style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
+
+<div id="offlineBanner" class="hidden w-full bg-yellow-700 text-white py-1.5 px-4 text-center text-label-sm font-label-sm z-[100]">
+  <span class="material-symbols-outlined align-middle mr-1 text-sm">wifi_off</span>Offline — voice queries unavailable. Call 112.
+</div>
+
+<!-- NAV -->
+<nav class="bg-background/95 backdrop-blur-md border-b border-outline-variant flex justify-between items-center w-full h-16 px-margin-desktop sticky top-0 z-50">
+  <div class="flex items-center gap-4">
+    <img alt="Rakshak AI Logo" class="h-8" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS9WVsNI3SETZU0HIc2sVI4lwSSamXCn1dJAKHlTsFT160wRyOwXyGYH_yavV2aP1QeP7TnKTgv10k5SM1VIqSoKchCO7YaDVUi9m3Ri5GK06xXhfdySopf2f1EYo0-1fX8x4HRjk_c4LlDfboSzCgbn0rxX_B8eEY6F5ajk1XTv6KITHRqabO1qe-R_hS_SwFaGA_qGpECXAiyOI1ZO6j0Phg_mFQ7A9yG302QZJe-8Zjpc6QMsiP"/>
+    <span class="text-headline-md font-headline-md font-bold text-on-background">Rakshak AI</span>
+  </div>
+  <div class="hidden md:flex gap-6 items-center h-full">
+    <a class="nav-link" href="index.html">Dashboard</a>
+    <a class="nav-link" href="map.html">Map</a>
+    <a class="nav-link" href="resources.html">Resources</a>
+    <a class="nav-link" href="assessment.html">Assessment</a>
+  </div>
+  <div class="flex items-center gap-4">
+    <select id="langSelect" class="bg-surface-container border border-outline-variant text-on-surface text-label-sm font-label-sm rounded-lg px-3 py-2 focus:outline-none focus:border-tertiary" onchange="onLangChange()">
+      <option value="en-IN">🇮🇳 English</option>
+      <option value="hi-IN">हिंदी</option>
+      <option value="ta-IN">தமிழ்</option>
+      <option value="te-IN">తెలుగు</option>
+      <option value="bn-IN">বাংলা</option>
+      <option value="mr-IN">मराठी</option>
+    </select>
+    <button onclick="triggerSOS()" class="bg-secondary-container text-on-secondary-container px-6 py-2 rounded-full text-label-md font-label-md font-bold hover:bg-error-container transition-colors min-h-[48px] uppercase tracking-wider shadow-lg">SOS</button>
+  </div>
+</nav>
+
+<!-- ALERT BANNER -->
+<div class="alert-banner w-full bg-[#EF4444] text-white relative z-40 border-b border-[#B91C1C] flex items-center h-10">
+  <div class="absolute left-0 bg-[#EF4444] z-10 px-4 h-full flex items-center shadow-[10px_0_15px_-3px_rgba(239,68,68,1)]">
+    <span class="material-symbols-outlined mr-2 animate-pulse" style="font-variation-settings:'FILL' 1;">warning</span>
+    <span class="font-label-md font-bold text-label-md uppercase tracking-wider">Active Alert</span>
+  </div>
+  <div class="ticker-outer"><div class="ticker-inner text-label-md font-label-md"><span id="alertText">Loading emergency alerts...</span><span id="alertTextB" aria-hidden="true">Loading emergency alerts...</span></div></div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<main class="flex-1 p-gutter md:p-margin-desktop grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1920px] mx-auto w-full pb-24 lg:pb-8">
+
+  <!-- LEFT: Chat Interface (full-height) -->
+  <div class="lg:col-span-8 flex flex-col h-[calc(100vh-200px)] min-h-[500px]">
+    <div class="bg-surface-container-high border border-outline-variant rounded-2xl flex flex-col h-full overflow-hidden shadow-xl">
+
+      <!-- Chat Header -->
+      <div class="p-5 border-b border-outline-variant flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-tertiary/20 border border-tertiary/30 flex items-center justify-center">
+            <span class="material-symbols-outlined text-tertiary text-xl">graphic_eq</span>
+          </div>
+          <div>
+            <div class="text-label-md font-label-md font-bold text-on-surface">Rakshak Gemini</div>
+            <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse"></div><span id="aiStatus" class="text-label-sm font-label-sm text-on-surface-variant">Ready — Powered by Google Gemini</span></div>
+          </div>
+        </div>
+        <!-- Waveform visualizer -->
+        <div id="waveform" class="flex items-end gap-1 h-8">
+          <div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:40%"></div>
+          <div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:80%"></div>
+          <div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:60%"></div>
+          <div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:100%"></div>
+          <div class="w-1.5 bg-tertiary rounded-t wave-bar" style="height:50%"></div>
+        </div>
+      </div>
+
+      <!-- Quick Chips -->
+      <div class="p-4 border-b border-outline-variant flex gap-2 overflow-x-auto shrink-0">
+        <button class="quick-chip" onclick="sendQuick('Where is the nearest hospital?')">🏥 Nearest Hospital</button>
+        <button class="quick-chip" onclick="sendQuick('Where is the nearest emergency shelter?')">🏠 Nearest Shelter</button>
+        <button class="quick-chip" onclick="sendQuick('What are the evacuation routes in my area?')">🚗 Evacuation Routes</button>
+        <button class="quick-chip" onclick="sendQuick('What should I do during a flood?')">🌊 Flood Safety</button>
+        <button class="quick-chip" onclick="sendQuick('What should I do during an earthquake?')">🌍 Earthquake Safety</button>
+        <button class="quick-chip" onclick="sendQuick('How do I provide first aid?')">🩺 First Aid</button>
+        <button class="quick-chip" onclick="sendQuick('What supplies should I have in an emergency kit?')">🎒 Emergency Kit</button>
+      </div>
+
+      <!-- Chat History -->
+      <div id="chatHistory" class="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+        <!-- Welcome message -->
+        <div class="chat-ai msg-appear">
+          <div class="text-xs font-mono text-tertiary mb-1.5 font-bold">RAKSHAK GEMINI</div>
+          <div>Namaste! I'm Rakshak Gemini, your AI emergency assistant. I can help you with:</div>
+          <ul class="mt-2 ml-4 list-disc text-sm opacity-90 space-y-1">
+            <li>Finding hospitals and shelters near you</li>
+            <li>Evacuation routes and safety protocols</li>
+            <li>First aid guidance</li>
+            <li>Real-time disaster information</li>
+          </ul>
+          <div class="mt-2 text-sm opacity-80">Type or speak your question. For life-threatening emergencies, call <strong>112</strong> immediately.</div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="p-4 border-t border-outline-variant shrink-0">
+        <div class="flex gap-3 items-end">
+          <div class="flex-1">
+            <textarea id="chatInput" rows="2" placeholder="Type your emergency question here..."
+              class="w-full bg-surface-container border border-outline-variant rounded-xl px-4 py-3 text-label-md font-label-md text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-tertiary transition-colors resize-none"
+              onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendTextQuery();}"></textarea>
+          </div>
+          <div class="flex flex-col gap-2">
+            <button onclick="sendTextQuery()" class="bg-tertiary text-on-tertiary p-3 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center w-12 h-12">
+              <span class="material-symbols-outlined">send</span>
+            </button>
+            <button id="micBtn" onclick="toggleVoice()" class="border border-outline-variant text-on-surface-variant p-3 rounded-xl hover:border-tertiary hover:text-tertiary transition-all flex items-center justify-center w-12 h-12">
+              <span class="material-symbols-outlined">mic</span>
+            </button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between mt-2 px-1">
+          <span id="micStatusLabel" class="text-label-sm font-label-sm text-on-surface-variant">Press Enter to send · Shift+Enter for newline</span>
+          <span class="text-label-sm font-label-sm text-on-surface-variant">Voice: <span id="currentLang" class="text-tertiary">English (India)</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Language + Contacts + Tips -->
+  <div class="lg:col-span-4 flex flex-col gap-5">
+
+    <!-- Language Selector -->
+    <div class="bg-surface-container-high border border-outline-variant rounded-2xl p-5">
+      <h2 class="text-headline-sm font-headline-sm text-on-surface mb-1 flex items-center gap-2">
+        <span class="material-symbols-outlined text-tertiary">language</span>Language
+      </h2>
+      <p class="text-label-sm font-label-sm text-on-surface-variant mb-4">Select your preferred language for voice input and AI responses.</p>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="lang-option active" onclick="setLang('en-IN',this,'English (India)')"><span>🇮🇳</span><span>English</span></div>
+        <div class="lang-option" onclick="setLang('hi-IN',this,'हिंदी')"><span>🇮🇳</span><span>हिंदी</span></div>
+        <div class="lang-option" onclick="setLang('ta-IN',this,'தமிழ்')"><span>🏳️</span><span>தமிழ்</span></div>
+        <div class="lang-option" onclick="setLang('te-IN',this,'తెలుగు')"><span>🏳️</span><span>తెలుగు</span></div>
+        <div class="lang-option" onclick="setLang('bn-IN',this,'বাংলা')"><span>🏳️</span><span>বাংলা</span></div>
+        <div class="lang-option" onclick="setLang('mr-IN',this,'मराठी')"><span>🏳️</span><span>मराठी</span></div>
+      </div>
+    </div>
+
+    <!-- Emergency Contacts -->
+    <div class="bg-surface-container-high border border-outline-variant rounded-2xl p-5">
+      <h2 class="text-headline-sm font-headline-sm text-on-surface mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-[#EF4444]">call</span>Emergency Hotlines
+      </h2>
+      <div class="flex flex-col gap-2">
+        <a href="tel:112" class="flex items-center gap-3 p-3 bg-[#EF4444]/10 border border-[#EF4444]/25 rounded-xl hover:bg-[#EF4444]/20 transition-colors group">
+          <div class="w-10 h-10 bg-[#EF4444] rounded-full flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-white text-base">call</span></div>
+          <div><div class="text-label-md font-label-md font-bold text-on-surface">112 — National Emergency</div><div class="text-label-sm font-label-sm text-on-surface-variant">Police, Fire, Medical</div></div>
+          <span class="material-symbols-outlined text-on-surface-variant group-hover:text-[#EF4444] transition-colors ml-auto">chevron_right</span>
+        </a>
+        <a href="tel:108" class="flex items-center gap-3 p-3 bg-[#10B981]/10 border border-[#10B981]/25 rounded-xl hover:bg-[#10B981]/20 transition-colors group">
+          <div class="w-10 h-10 bg-[#10B981] rounded-full flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-white text-base">ambulance</span></div>
+          <div><div class="text-label-md font-label-md font-bold text-on-surface">108 — Ambulance</div><div class="text-label-sm font-label-sm text-on-surface-variant">Free emergency medical</div></div>
+          <span class="material-symbols-outlined text-on-surface-variant group-hover:text-[#10B981] transition-colors ml-auto">chevron_right</span>
+        </a>
+        <a href="tel:1078" class="flex items-center gap-3 p-3 bg-[#3B82F6]/10 border border-[#3B82F6]/25 rounded-xl hover:bg-[#3B82F6]/20 transition-colors group">
+          <div class="w-10 h-10 bg-[#3B82F6] rounded-full flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-white text-base">flood</span></div>
+          <div><div class="text-label-md font-label-md font-bold text-on-surface">1078 — NDRF Helpline</div><div class="text-label-sm font-label-sm text-on-surface-variant">National Disaster Response</div></div>
+          <span class="material-symbols-outlined text-on-surface-variant group-hover:text-[#3B82F6] transition-colors ml-auto">chevron_right</span>
+        </a>
+        <a href="tel:101" class="flex items-center gap-3 p-3 bg-orange-500/10 border border-orange-500/25 rounded-xl hover:bg-orange-500/20 transition-colors group">
+          <div class="w-10 h-10 bg-orange-600 rounded-full flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-white text-base">local_fire_department</span></div>
+          <div><div class="text-label-md font-label-md font-bold text-on-surface">101 — Fire Services</div><div class="text-label-sm font-label-sm text-on-surface-variant">Fire & rescue</div></div>
+          <span class="material-symbols-outlined text-on-surface-variant group-hover:text-orange-500 transition-colors ml-auto">chevron_right</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Safety Tips -->
+    <div class="bg-surface-container-high border border-outline-variant rounded-2xl p-5">
+      <h2 class="text-headline-sm font-headline-sm text-on-surface mb-4 flex items-center gap-2">
+        <span class="material-symbols-outlined text-tertiary">lightbulb</span>Safety Reminders
+      </h2>
+      <div class="flex flex-col gap-3">
+        <div class="flex items-start gap-3"><div class="w-2 h-2 rounded-full bg-tertiary mt-2 shrink-0"></div><p class="text-label-sm font-label-sm text-on-surface-variant">Keep your phone charged. Save emergency contacts in speed dial.</p></div>
+        <div class="flex items-start gap-3"><div class="w-2 h-2 rounded-full bg-tertiary mt-2 shrink-0"></div><p class="text-label-sm font-label-sm text-on-surface-variant">Know your nearest evacuation route and rally point.</p></div>
+        <div class="flex items-start gap-3"><div class="w-2 h-2 rounded-full bg-tertiary mt-2 shrink-0"></div><p class="text-label-sm font-label-sm text-on-surface-variant">Prepare a 72-hour emergency kit with water, food, and first aid.</p></div>
+        <div class="flex items-start gap-3"><div class="w-2 h-2 rounded-full bg-[#EF4444] mt-2 shrink-0"></div><p class="text-label-sm font-label-sm text-on-surface-variant">Do not enter flood water — 6 inches can knock you down, 12 inches can carry a vehicle.</p></div>
+        <div class="flex items-start gap-3"><div class="w-2 h-2 rounded-full bg-[#EF4444] mt-2 shrink-0"></div><p class="text-label-sm font-label-sm text-on-surface-variant">During earthquake: Drop, Cover, Hold On. Stay away from windows.</p></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- SOS MODAL -->
+<div id="sosModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+  <div class="bg-surface-container-high border border-[#EF4444]/50 rounded-xl p-6 max-w-sm w-full shadow-2xl">
+    <div class="flex items-center gap-3 mb-5"><div class="w-12 h-12 bg-[#EF4444] rounded-full flex items-center justify-center shadow-lg"><span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings:'FILL' 1">emergency</span></div><div><h2 class="text-headline-sm font-headline-sm text-[#EF4444]">SOS ACTIVATED</h2><p class="text-label-sm font-label-sm text-on-surface-variant">Select emergency service</p></div></div>
+    <div class="flex flex-col gap-3 mb-5">
+      <a href="tel:112" class="sos-btn bg-[#EF4444]"><span class="material-symbols-outlined text-[18px]">call</span>112 — National Emergency</a>
+      <a href="tel:108" class="sos-btn bg-[#10B981]"><span class="material-symbols-outlined text-[18px]">ambulance</span>108 — Ambulance</a>
+      <a href="tel:1078" class="sos-btn bg-[#3B82F6]"><span class="material-symbols-outlined text-[18px]">flood</span>1078 — NDRF Helpline</a>
+    </div>
+    <button onclick="closeSOS()" class="w-full text-on-surface-variant text-label-sm font-label-sm hover:text-on-surface py-1">Close</button>
+  </div>
+</div>
+
+<!-- MOBILE NAV -->
+<nav class="bg-surface-container-highest fixed bottom-0 w-full rounded-t-xl z-50 border-t border-outline-variant shadow-lg lg:hidden h-20 flex justify-around items-center px-4">
+  <a href="index.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">home</span><span class="text-label-sm font-label-sm mt-1">Home</span></a>
+  <a href="map.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">explore</span><span class="text-label-sm font-label-sm mt-1">Map</span></a>
+  <a href="resources.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">emergency_home</span><span class="text-label-sm font-label-sm mt-1">Resources</span></a>
+  <a href="assistant.html" class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 scale-110 min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">graphic_eq</span><span class="text-label-sm font-label-sm mt-1">Assistant</span></a>
+</nav>
+
+<style>
+.sos-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:12px;color:white;font-weight:700;font-size:14px;text-decoration:none;transition:opacity 0.2s}
+.sos-btn:hover{opacity:0.9}
+</style>
+
+<script src="js/api.js"></script><script src="js/voice.js"></script><script src="js/offline.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{setupOfflineHandlers();loadAlerts();});
+
+function _sa(t){['alertText','alertTextB'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});}
+async function loadAlerts(){
+  try{const e=await getActiveEvents();if(e.length)_sa(e.map(x=>'? '+x.title+' � '+x.location).join('   �   ')+'   ');
+  else _sa('\u26a0 No active alerts in your area. Stay prepared � check local authorities for updates.');}
+  catch{_sa('\u26a0 SEVERE WEATHER WARNING: Category 4 Cyclone approaching coastal regions. Evacuation orders in effect. Seek shelter immediately. \u26a0 FLOOD ALERT: River levels rising rapidly. Move to high ground now.');}
+}
+
+function setLang(val,el,label){
+  document.getElementById("langSelect").value=val;
+  document.getElementById("currentLang").textContent=label;
+  document.querySelectorAll(".lang-option").forEach(o=>o.classList.remove("active"));
+  el.classList.add("active");
+}
+function onLangChange(){
+  const lang=document.getElementById("langSelect").value;
+  const labels={"en-IN":"English (India)","hi-IN":"हिंदी","ta-IN":"தமிழ்","te-IN":"తెలుగు","bn-IN":"বাংলা","mr-IN":"मराठी"};
+  document.getElementById("currentLang").textContent=labels[lang]||lang;
+}
+
+function sendQuick(text){document.getElementById("chatInput").value=text;sendTextQuery();}
+
+// Override voice.js addChatMessage to use msg-appear class
+function addChatMessage(text,role){
+  const hist=document.getElementById("chatHistory");
+  const div=document.createElement("div");
+  div.className=(role==="user"?"chat-user":"chat-ai")+" msg-appear";
+  if(role==="ai"){div.innerHTML=`<div class="text-xs font-mono text-tertiary mb-1.5 font-bold">RAKSHAK GEMINI</div>${text}`;}
+  else{div.textContent=text;}
+  hist.appendChild(div);hist.scrollTop=hist.scrollHeight;
+}
+
+function showTypingIndicator(){
+  const hist=document.getElementById("chatHistory");
+  const id="typing-"+Date.now();
+  const div=document.createElement("div");div.id=id;div.className="chat-ai msg-appear";
+  div.innerHTML=`<div class="text-xs font-mono text-tertiary mb-1.5 font-bold">RAKSHAK GEMINI</div><span class="opacity-60">Analyzing your query...</span>`;
+  hist.appendChild(div);hist.scrollTop=hist.scrollHeight;return id;
+}
+function removeTypingIndicator(id){document.getElementById(id)?.remove();}
+
+function triggerSOS(){document.getElementById("sosModal").classList.remove("hidden");}
+function closeSOS(){document.getElementById("sosModal").classList.add("hidden");}
+</script>
+</body>
+</html>
