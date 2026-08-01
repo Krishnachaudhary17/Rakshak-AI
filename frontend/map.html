@@ -187,6 +187,7 @@ document.addEventListener("DOMContentLoaded",async()=>{
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18}).addTo(map);
   Object.values(layers).forEach(lg=>lg.addTo(map));
   map.on("click",onMapClick);
+  try{await detectDisasters();}catch(e){console.warn("Disaster scrape skipped:",e);}
   await Promise.all([loadMapFacilities(),loadMapEvents(),loadHazardZonesMap()]);
 });
 

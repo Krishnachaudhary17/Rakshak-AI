@@ -13,8 +13,10 @@ env/
 
 # Environment
 .env
+backend/.env
 
 # Database (runtime file — do not commit)
+*.db
 backend/rakshak.db
 
 # OS
