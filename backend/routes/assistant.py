@@ -32,7 +32,7 @@ def chat(query: Query):
 
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
+        f"gemini-3.5-flash:generateContent?key={GEMINI_KEY}"
     )
     payload = {
         "contents": [
