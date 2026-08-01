@@ -34,6 +34,10 @@
     <select id="langSelect" class="sr-only"><option value="en-IN">English</option><option value="hi-IN">Hindi</option><option value="ta-IN">Tamil</option><option value="te-IN">Telugu</option><option value="bn-IN">Bengali</option><option value="mr-IN">Marathi</option></select>
     <button onclick="openLangModal()" class="text-on-surface-variant hover:text-on-surface p-2 hover:bg-surface-variant/50 transition-all rounded-full flex items-center justify-center min-w-[48px] min-h-[48px]"><span class="material-symbols-outlined">language</span></button>
     <button id="wifiStatusBtn" class="text-on-surface-variant p-2 hover:bg-surface-variant/50 transition-all rounded-full flex items-center justify-center min-w-[48px] min-h-[48px]"><span id="wifiIcon" class="material-symbols-outlined text-[#10B981]">wifi</span></button>
+    <a href="admin-login.html" class="hidden md:flex items-center gap-1.5 text-label-sm font-label-sm text-on-surface-variant hover:text-on-surface border border-outline-variant hover:border-outline px-3 py-2 rounded-full transition-all min-h-[40px]">
+      <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
+      Staff Login
+    </a>
     <button onclick="triggerSOS()" class="bg-secondary-container text-on-secondary-container px-6 py-2 rounded-full text-label-md font-label-md font-bold hover:bg-error-container transition-colors min-h-[48px] uppercase tracking-wider shadow-lg">SOS</button>
   </div>
 </nav>
@@ -171,6 +175,7 @@
   <a href="map.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">explore</span><span class="text-label-sm font-label-sm mt-1">Map</span></a>
   <a href="resources.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">emergency_home</span><span class="text-label-sm font-label-sm mt-1">Resources</span></a>
   <a href="assistant.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">graphic_eq</span><span class="text-label-sm font-label-sm mt-1">Assistant</span></a>
+  <a href="admin-login.html" class="flex flex-col items-center justify-center text-on-surface-variant min-h-[48px] min-w-[48px]"><span class="material-symbols-outlined">admin_panel_settings</span><span class="text-label-sm font-label-sm mt-1">Staff</span></a>
 </nav>
 <script src="js/api.js"></script><script src="js/map.js"></script><script src="js/voice.js"></script><script src="js/offline.js"></script>
 <script>
@@ -239,5 +244,6 @@ function processImage(file){
   r.readAsDataURL(file);
 }
 </script>
+
 </body>
 </html>

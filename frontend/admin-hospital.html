@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rakshak AI — Hospital Command Panel</title>
+<meta name="description" content="Emergency hospital status management panel for Rakshak AI."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="js/tailwind.config.js"></script>
+<style>
+  body { font-family: 'Inter', sans-serif; background: #0a0a10; color: #fff; }
+
+  /* ── Counter Widgets ── */
+  .counter-card {
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .counter-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    text-align: center;
+  }
+  .counter-value {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
+    min-width: 80px;
+    text-align: center;
+    transition: color 0.3s;
+  }
+  .counter-btns { display: flex; gap: 12px; }
+  .counter-btn {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: 300;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .counter-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3); }
+  .counter-btn:active { transform: scale(0.92); }
+  .counter-btn.inc { border-color: rgba(255,185,95,0.4); color: #ffb95f; }
+  .counter-btn.inc:hover { background: rgba(255,185,95,0.12); border-color: #ffb95f; }
+  .counter-btn.dec { border-color: rgba(255,255,255,0.15); }
+
+  /* ── Status Chips ── */
+  .chip-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip-btn {
+    padding: 10px 18px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    min-height: 48px;
+    display: flex; align-items: center; gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .chip-inactive {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.45);
+  }
+  .chip-active { border-color: transparent; }
+  .chip-green  { background: rgba(16,185,129,0.2); border-color: #10B981 !important; color: #10B981; }
+  .chip-yellow { background: rgba(245,158,11,0.2); border-color: #F59E0B !important; color: #F59E0B; }
+  .chip-red    { background: rgba(239,68,68,0.2);  border-color: #EF4444 !important; color: #EF4444; }
+  .chip-blue   { background: rgba(59,130,246,0.2); border-color: #3B82F6 !important; color: #3B82F6; }
+
+  /* ── Section cards ── */
+  .section-card {
+    background: rgba(255,255,255,0.03);
+    border: 1.5px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+    padding: 24px;
+  }
+  .section-title {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,185,95,0.8);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .material-symbols-outlined { font-size: 16px; }
+
+  /* ── Save status ── */
+  .save-status {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 50px;
+    transition: all 0.3s;
+  }
+  .save-status.saving { background: rgba(245,158,11,0.15); color: #F59E0B; }
+  .save-status.saved  { background: rgba(16,185,129,0.15); color: #10B981; }
+  .save-status.error  { background: rgba(239,68,68,0.15);  color: #EF4444; }
+
+  /* ── Note textarea ── */
+  .note-area {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    color: #fff;
+    font-size: 0.95rem;
+    padding: 14px 16px;
+    resize: none;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.2s;
+    min-height: 80px;
+  }
+  .note-area:focus { border-color: rgba(255,185,95,0.5); }
+  .note-area::placeholder { color: rgba(255,255,255,0.25); }
+
+  /* ── Open/Closed toggle ── */
+  .big-toggle {
+    display: flex;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+  .big-toggle-btn {
+    flex: 1;
+    min-height: 56px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .big-toggle-btn.active-open  { background: rgba(16,185,129,0.25); color: #10B981; }
+  .big-toggle-btn.active-close { background: rgba(239,68,68,0.25); color: #EF4444; }
+  .big-toggle-btn.inactive { background: transparent; color: rgba(255,255,255,0.25); }
+</style>
+</head>
+<body>
+
+<!-- ── Top Nav ── -->
+<nav style="background:rgba(10,10,16,0.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);"
+     class="sticky top-0 z-50 flex items-center justify-between px-4 md:px-8 h-16">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 rounded-lg bg-[#ffb95f]/15 border border-[#ffb95f]/30 flex items-center justify-center">
+      <span class="material-symbols-outlined text-[#ffb95f] text-[18px]" style="font-variation-settings:'FILL' 1">local_hospital</span>
+    </div>
+    <div>
+      <div class="text-xs font-bold text-white/40 uppercase tracking-widest leading-none">Hospital Panel</div>
+      <div id="facilityNameDisplay" class="text-sm font-bold text-white leading-tight">Loading…</div>
+    </div>
+  </div>
+  <div class="flex items-center gap-3">
+    <span id="saveStatus" class="save-status saved hidden">✓ Up to date</span>
+    <a href="index.html" class="text-white/40 hover:text-white/70 text-sm transition-colors flex items-center gap-1">
+      <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+      <span class="hidden sm:inline">Public View</span>
+    </a>
+    <button onclick="adminLogout()"
+      class="flex items-center gap-2 text-sm font-semibold text-white/40 hover:text-red-400 transition-colors min-h-[44px] px-2">
+      <span class="material-symbols-outlined text-[18px]">logout</span>
+      <span class="hidden sm:inline">Sign Out</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main class="max-w-3xl mx-auto px-4 py-6 pb-24 flex flex-col gap-6">
+
+  <!-- Facility open/closed -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">info</span>
+      Facility Status
+    </div>
+    <div class="big-toggle" id="openToggle">
+      <button id="btnOpen" data-value="1" class="big-toggle-btn inactive"
+        onclick="setOpenStatus(1)">
+        <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">check_circle</span>
+        OPEN
+      </button>
+      <button id="btnClosed" data-value="0" class="big-toggle-btn inactive"
+        onclick="setOpenStatus(0)">
+        <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">cancel</span>
+        CLOSED
+      </button>
+    </div>
+  </div>
+
+  <!-- Section 1 — Bed & Staff Counters -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">bed</span>
+      Capacity — Tap to update
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+      <div class="counter-card">
+        <div class="counter-label">Ward Beds</div>
+        <div id="dispBeds" class="counter-value text-green-400">0</div>
+        <div class="counter-btns">
+          <button id="decBeds" class="counter-btn dec">−</button>
+          <button id="incBeds" class="counter-btn inc">+</button>
+        </div>
+      </div>
+
+      <div class="counter-card">
+        <div class="counter-label">ICU Beds</div>
+        <div id="dispIcu" class="counter-value text-green-400">0</div>
+        <div class="counter-btns">
+          <button id="decIcu" class="counter-btn dec">−</button>
+          <button id="incIcu" class="counter-btn inc">+</button>
+        </div>
+      </div>
+
+      <div class="counter-card">
+        <div class="counter-label">Ventilators</div>
+        <div id="dispVent" class="counter-value text-green-400">0</div>
+        <div class="counter-btns">
+          <button id="decVent" class="counter-btn dec">−</button>
+          <button id="incVent" class="counter-btn inc">+</button>
+        </div>
+      </div>
+
+      <div class="counter-card">
+        <div class="counter-label">Staff On Duty</div>
+        <div id="dispStaff" class="counter-value text-green-400">0</div>
+        <div class="counter-btns">
+          <button id="decStaff" class="counter-btn dec">−</button>
+          <button id="incStaff" class="counter-btn inc">+</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 2 — Incoming Patients -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">ambulance</span>
+      Incoming Patients
+    </div>
+    <div class="flex gap-4 items-center flex-wrap">
+      <div class="counter-card flex-1 min-w-[140px]">
+        <div class="counter-label">En Route</div>
+        <div id="dispIncoming" class="counter-value text-yellow-400">0</div>
+        <div class="counter-btns">
+          <button id="decIncoming" class="counter-btn dec">−</button>
+          <button id="incIncoming" class="counter-btn inc">+</button>
+        </div>
+      </div>
+      <div class="flex-1 min-w-[200px]">
+        <div class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Triage Severity</div>
+        <div class="chip-group flex-col">
+          <button id="sevMinor"    class="chip-btn chip-inactive" data-value="minor"    onclick="setSeverity('minor')">
+            <span class="material-symbols-outlined text-[16px]">check</span> Minor
+          </button>
+          <button id="sevModerate" class="chip-btn chip-inactive" data-value="moderate" onclick="setSeverity('moderate')">
+            <span class="material-symbols-outlined text-[16px]">warning</span> Moderate
+          </button>
+          <button id="sevCritical" class="chip-btn chip-inactive" data-value="critical" onclick="setSeverity('critical')">
+            <span class="material-symbols-outlined text-[16px]">emergency</span> Critical
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3 — Resource Status -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">inventory_2</span>
+      Resource Status — Tap to change
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- Blood Bank -->
+      <div>
+        <div class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">🩸 Blood Bank</div>
+        <div class="chip-group">
+          <button id="bloodStocked"  class="chip-btn chip-inactive" data-value="stocked"  >Stocked</button>
+          <button id="bloodLow"      class="chip-btn chip-inactive" data-value="low"       >Low</button>
+          <button id="bloodCritical" class="chip-btn chip-inactive" data-value="critical"  >Critical</button>
+        </div>
+      </div>
+
+      <!-- Generator -->
+      <div>
+        <div class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">🔋 Backup Generator</div>
+        <div class="chip-group">
+          <button id="genOn"  class="chip-btn chip-inactive" data-value="on" >
+            <span class="material-symbols-outlined text-[16px]">bolt</span> ON
+          </button>
+          <button id="genOff" class="chip-btn chip-inactive" data-value="off">
+            <span class="material-symbols-outlined text-[16px]">power_off</span> OFF
+          </button>
+        </div>
+      </div>
+
+      <!-- Oxygen Cylinders -->
+      <div>
+        <div class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">🫁 Oxygen Cylinders</div>
+        <div class="counter-card flex-row justify-between" style="flex-direction:row; align-items:center; padding:14px 18px;">
+          <div id="dispOxygen" class="counter-value" style="font-size:2.2rem;">0</div>
+          <div class="counter-btns">
+            <button id="decOxygen" class="counter-btn dec" style="width:52px;height:52px">−</button>
+            <button id="incOxygen" class="counter-btn inc" style="width:52px;height:52px">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Infrastructure -->
+      <div>
+        <div class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">🏗 Infrastructure</div>
+        <div class="chip-group flex-wrap">
+          <button id="infraStable"   class="chip-btn chip-inactive" data-value="stable"  >
+            <span class="material-symbols-outlined text-[16px]">verified</span> Stable
+          </button>
+          <button id="infraDamaged"  class="chip-btn chip-inactive" data-value="damaged" >
+            <span class="material-symbols-outlined text-[16px]">construction</span> Damaged
+          </button>
+          <button id="infraCritical" class="chip-btn chip-inactive" data-value="critical">
+            <span class="material-symbols-outlined text-[16px]">dangerous</span> Critical
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 4 — Situation Note -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">edit_note</span>
+      Situation Note
+    </div>
+    <textarea id="situationNote" class="note-area" rows="3"
+      placeholder="Any urgent information for coordination teams… (e.g. 'North wing evacuated due to gas leak')"
+      oninput="onNoteChange()"></textarea>
+    <div class="flex items-center gap-2 mt-2 text-xs text-white/30">
+      <span class="material-symbols-outlined text-[14px]">mic</span>
+      <span>Tip: Use your device's voice keyboard for hands-free input.</span>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Bottom Save bar (mobile) ── -->
+<div class="fixed bottom-0 left-0 right-0 p-4 flex justify-between items-center"
+     style="background:rgba(10,10,16,0.95);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.06);">
+  <div class="flex items-center gap-2 text-sm text-white/40">
+    <span class="material-symbols-outlined text-[16px] text-[#ffb95f]">shield</span>
+    <span id="lastUpdatedLabel">Fetching status…</span>
+  </div>
+  <button onclick="flushSave('hospital')"
+    class="bg-[#ffb95f] text-[#1a0a00] font-bold text-sm px-5 py-2.5 rounded-full flex items-center gap-2 hover:opacity-90 transition-opacity">
+    <span class="material-symbols-outlined text-[16px]">save</span>
+    Save Now
+  </button>
+</div>
+
+<script src="js/admin.js"></script>
+<script>
+// ── Page init ────────────────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!requireAuth("hospital")) return;
+
+  document.getElementById("facilityNameDisplay").textContent = getFacility();
+
+  try {
+    const { data } = await fetchStatus();
+    populateAll(data);
+  } catch {
+    document.getElementById("lastUpdatedLabel").textContent = "Could not load status.";
+  }
+});
+
+function populateAll(d) {
+  // Counters
+  initCounter("dispBeds",     "decBeds",     "incBeds",     d.beds_available,   "hospital", "beds_available");
+  initCounter("dispIcu",      "decIcu",      "incIcu",      d.icu_available,    "hospital", "icu_available");
+  initCounter("dispVent",     "decVent",     "incVent",     d.ventilators,      "hospital", "ventilators");
+  initCounter("dispStaff",    "decStaff",    "incStaff",    d.staff_on_duty,    "hospital", "staff_on_duty");
+  initCounter("dispIncoming", "decIncoming", "incIncoming", d.incoming_patients,"hospital", "incoming_patients");
+  initCounter("dispOxygen",   "decOxygen",   "incOxygen",   d.oxygen_cylinders, "hospital", "oxygen_cylinders");
+
+  // Open/closed
+  setOpenStatusUI(d.is_open);
+
+  // Chip groups
+  initChipGroup(
+    ["bloodStocked","bloodLow","bloodCritical"],
+    d.blood_bank_status, "hospital", "blood_bank_status",
+    { stocked: "chip-green", low: "chip-yellow", critical: "chip-red" }
+  );
+  initChipGroup(
+    ["genOn","genOff"],
+    d.generator_status, "hospital", "generator_status",
+    { on: "chip-green", off: "chip-red" }
+  );
+  initChipGroup(
+    ["infraStable","infraDamaged","infraCritical"],
+    d.infrastructure_status, "hospital", "infrastructure_status",
+    { stable: "chip-green", damaged: "chip-yellow", critical: "chip-red" }
+  );
+  initChipGroup(
+    ["sevMinor","sevModerate","sevCritical"],
+    d.incoming_severity, "hospital", "incoming_severity",
+    { minor: "chip-green", moderate: "chip-yellow", critical: "chip-red" }
+  );
+
+  // Note
+  const noteEl = document.getElementById("situationNote");
+  if (noteEl) noteEl.value = d.situation_note || "";
+
+  // Last updated
+  if (d.last_updated) {
+    const dt = new Date(d.last_updated);
+    document.getElementById("lastUpdatedLabel").textContent =
+      "Last update: " + dt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  // Show save status
+  document.getElementById("saveStatus").classList.remove("hidden");
+}
+
+// Open/closed
+function setOpenStatus(val) {
+  setOpenStatusUI(val);
+  queueSave("hospital", "is_open", val);
+}
+function setOpenStatusUI(val) {
+  const openBtn  = document.getElementById("btnOpen");
+  const closeBtn = document.getElementById("btnClosed");
+  openBtn.className  = "big-toggle-btn " + (val ? "active-open"  : "inactive");
+  closeBtn.className = "big-toggle-btn " + (!val ? "active-close" : "inactive");
+}
+
+// Triage severity (uses chip group but needs easy API too)
+function setSeverity(val) {
+  const map = { minor: "chip-green", moderate: "chip-yellow", critical: "chip-red" };
+  initChipGroup(
+    ["sevMinor","sevModerate","sevCritical"],
+    val, "hospital", "incoming_severity", map
+  );
+}
+
+// Note debounce
+let _noteTimer = null;
+function onNoteChange() {
+  clearTimeout(_noteTimer);
+  showSaving();
+  _noteTimer = setTimeout(() => {
+    const val = document.getElementById("situationNote").value;
+    queueSave("hospital", "situation_note", val);
+  }, 1500);
+}
+</script>
+</body>
+</html>

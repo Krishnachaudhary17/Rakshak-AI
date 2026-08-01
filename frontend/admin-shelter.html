@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rakshak AI — Shelter Command Panel</title>
+<meta name="description" content="Emergency shelter status management panel for Rakshak AI."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="js/tailwind.config.js"></script>
+<style>
+  body { font-family: 'Inter', sans-serif; background: #0a0a12; color: #fff; }
+
+  /* ── Counter Widgets ── */
+  .counter-card {
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .counter-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    text-align: center;
+  }
+  .counter-value {
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    transition: color 0.3s;
+  }
+  .counter-btns { display: flex; gap: 12px; }
+  .counter-btn {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+    font-size: 1.8rem;
+    font-weight: 300;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .counter-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.3); }
+  .counter-btn:active { transform: scale(0.92); }
+  .counter-btn.inc { border-color: rgba(99,255,160,0.4); color: #4ade80; }
+  .counter-btn.inc:hover { background: rgba(99,255,160,0.1); border-color: #4ade80; }
+
+  /* ── Batch buttons ── */
+  .batch-btn {
+    flex: 1;
+    min-height: 52px;
+    border-radius: 12px;
+    background: rgba(99,255,160,0.08);
+    border: 1.5px solid rgba(99,255,160,0.2);
+    color: #4ade80;
+    font-size: 0.95rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .batch-btn:hover { background: rgba(99,255,160,0.15); border-color: #4ade80; }
+  .batch-btn:active { transform: scale(0.96); }
+
+  /* ── Capacity bar ── */
+  .capacity-bar-bg {
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .capacity-bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.4s ease, background 0.4s;
+  }
+
+  /* ── Status Chips ── */
+  .chip-btn {
+    padding: 10px 18px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    min-height: 48px;
+    display: flex; align-items: center; gap: 6px;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .chip-inactive { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.45); }
+  .chip-active { border-color: transparent; }
+  .chip-green  { background: rgba(16,185,129,0.2); border-color: #10B981 !important; color: #10B981; }
+  .chip-yellow { background: rgba(245,158,11,0.2); border-color: #F59E0B !important; color: #F59E0B; }
+  .chip-red    { background: rgba(239,68,68,0.2);  border-color: #EF4444 !important; color: #EF4444; }
+  .chip-blue   { background: rgba(99,102,241,0.2); border-color: #818CF8 !important; color: #818CF8; }
+
+  /* ── Tag chips (multi-select) ── */
+  .tag-btn {
+    padding: 10px 16px;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .tag-inactive { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.35); }
+  .tag-active   { background: rgba(168,85,247,0.2);  border-color: #A855F7;              color: #A855F7; }
+
+  /* ── Skills counter small ── */
+  .skill-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .skill-row:last-child { border-bottom: none; }
+  .skill-name { font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.7); }
+  .skill-count { font-size: 1.5rem; font-weight: 800; color: #fff; min-width: 40px; text-align: center; }
+  .skill-btn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .skill-btn:hover { background: rgba(255,255,255,0.1); }
+
+  /* ── Section cards ── */
+  .section-card {
+    background: rgba(255,255,255,0.03);
+    border: 1.5px solid rgba(255,255,255,0.07);
+    border-radius: 20px;
+    padding: 24px;
+  }
+  .section-title {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(99,255,160,0.75);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title .material-symbols-outlined { font-size: 16px; }
+
+  /* ── Save status ── */
+  .save-status { font-size: 0.78rem; font-weight: 600; padding: 6px 14px; border-radius: 50px; transition: all 0.3s; }
+  .save-status.saving { background: rgba(245,158,11,0.15); color: #F59E0B; }
+  .save-status.saved  { background: rgba(16,185,129,0.15); color: #10B981; }
+  .save-status.error  { background: rgba(239,68,68,0.15);  color: #EF4444; }
+
+  /* ── Open/Closed ── */
+  .big-toggle { display: flex; border-radius: 14px; overflow: hidden; border: 2px solid rgba(255,255,255,0.1); }
+  .big-toggle-btn {
+    flex: 1; min-height: 56px;
+    font-size: 0.95rem; font-weight: 800; letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .big-toggle-btn.active-open  { background: rgba(16,185,129,0.25); color: #10B981; }
+  .big-toggle-btn.active-close { background: rgba(239,68,68,0.25);  color: #EF4444; }
+  .big-toggle-btn.inactive { background: transparent; color: rgba(255,255,255,0.25); }
+
+  /* ── Supply days slider ── */
+  .supply-slider {
+    width: 100%;
+    accent-color: #4ade80;
+    cursor: pointer;
+    height: 6px;
+  }
+  .note-area {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    color: #fff;
+    font-size: 0.95rem;
+    padding: 14px 16px;
+    resize: none;
+    outline: none;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.2s;
+    min-height: 72px;
+  }
+  .note-area:focus { border-color: rgba(99,255,160,0.4); }
+  .note-area::placeholder { color: rgba(255,255,255,0.25); }
+  .eta-input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 0.95rem;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    min-height: 48px;
+    color-scheme: dark;
+  }
+  .eta-input:focus { border-color: rgba(99,255,160,0.4); }
+</style>
+</head>
+<body>
+
+<!-- ── Top Nav ── -->
+<nav style="background:rgba(10,10,18,0.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);"
+     class="sticky top-0 z-50 flex items-center justify-between px-4 md:px-8 h-16">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 rounded-lg bg-green-400/15 border border-green-400/30 flex items-center justify-center">
+      <span class="material-symbols-outlined text-green-400 text-[18px]" style="font-variation-settings:'FILL' 1">emergency_home</span>
+    </div>
+    <div>
+      <div class="text-xs font-bold text-white/40 uppercase tracking-widest leading-none">Shelter Panel</div>
+      <div id="facilityNameDisplay" class="text-sm font-bold text-white leading-tight">Loading…</div>
+    </div>
+  </div>
+  <div class="flex items-center gap-3">
+    <span id="saveStatus" class="save-status saved hidden">✓ Up to date</span>
+    <a href="index.html" class="text-white/40 hover:text-white/70 text-sm transition-colors flex items-center gap-1">
+      <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+      <span class="hidden sm:inline">Public View</span>
+    </a>
+    <button onclick="adminLogout()"
+      class="flex items-center gap-2 text-sm font-semibold text-white/40 hover:text-red-400 transition-colors min-h-[44px] px-2">
+      <span class="material-symbols-outlined text-[18px]">logout</span>
+      <span class="hidden sm:inline">Sign Out</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main class="max-w-3xl mx-auto px-4 py-6 pb-24 flex flex-col gap-6">
+
+  <!-- Open/Closed -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">info</span>
+      Shelter Status
+    </div>
+    <div class="big-toggle">
+      <button id="btnOpen"   class="big-toggle-btn inactive" onclick="setOpenStatus(1)">
+        <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">check_circle</span> OPEN
+      </button>
+      <button id="btnClosed" class="big-toggle-btn inactive" onclick="setOpenStatus(0)">
+        <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">cancel</span> CLOSED
+      </button>
+    </div>
+  </div>
+
+  <!-- Section 1 — Occupancy -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">groups</span>
+      Occupancy
+    </div>
+
+    <!-- Big counter -->
+    <div class="flex items-center justify-center gap-6 mb-4">
+      <button id="decOccupied" class="counter-btn dec" style="width:72px;height:72px;font-size:2rem;">−</button>
+      <div class="text-center">
+        <div id="dispOccupied" class="counter-value" style="font-size:4rem;">0</div>
+        <div class="text-xs text-white/30 font-bold uppercase tracking-widest mt-1">people inside</div>
+      </div>
+      <button id="incOccupied" class="counter-btn inc" style="width:72px;height:72px;font-size:2rem;">+</button>
+    </div>
+
+    <!-- Capacity progress bar -->
+    <div class="capacity-bar-bg">
+      <div id="capacityBar" class="capacity-bar-fill" style="width:0%;background:#10B981"></div>
+    </div>
+    <div class="flex justify-between text-xs text-white/30 mt-1">
+      <span>0</span>
+      <span id="capacityLabel">of 0 capacity</span>
+    </div>
+
+    <!-- Batch add buttons -->
+    <div class="mt-4">
+      <div class="text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Quick Add</div>
+      <div class="flex gap-2">
+        <button class="batch-btn" onclick="batchAdd(10)">+10</button>
+        <button class="batch-btn" onclick="batchAdd(25)">+25</button>
+        <button class="batch-btn" onclick="batchAdd(50)">+50</button>
+        <button class="batch-btn" style="background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.2);color:#f87171;" onclick="batchAdd(-10)">−10</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2 — Supplies -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">water_drop</span>
+      Supply Status
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- Water -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <div class="text-xs font-bold text-white/40 uppercase tracking-widest">💧 Water Supply</div>
+          <span id="waterDaysLabel" class="text-lg font-bold text-green-400">— days</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="decWater" class="skill-btn">−</button>
+          <input id="waterSlider" type="range" min="0" max="14" step="1" value="3"
+            class="supply-slider flex-1"
+            oninput="onSlider('water_supply_days','waterDaysLabel','waterSlider')"/>
+          <button id="incWater" class="skill-btn">+</button>
+        </div>
+      </div>
+
+      <!-- Food -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <div class="text-xs font-bold text-white/40 uppercase tracking-widest">🍱 Food Supply</div>
+          <span id="foodDaysLabel" class="text-lg font-bold text-green-400">— days</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="decFood" class="skill-btn">−</button>
+          <input id="foodSlider" type="range" min="0" max="14" step="1" value="3"
+            class="supply-slider flex-1"
+            oninput="onSlider('food_supply_days','foodDaysLabel','foodSlider')"/>
+          <button id="incFood" class="skill-btn">+</button>
+        </div>
+      </div>
+
+      <!-- Bedding -->
+      <div class="md:col-span-2">
+        <div class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">🛏 Blankets / Bedding</div>
+        <div class="flex gap-2 flex-wrap">
+          <button id="beddingOk"  class="chip-btn chip-inactive" data-value="ok" >OK</button>
+          <button id="beddingLow" class="chip-btn chip-inactive" data-value="low">Low</button>
+          <button id="beddingOut" class="chip-btn chip-inactive" data-value="out">Out</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Section 3 — Medical Needs -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">medication</span>
+      Medical Needs
+    </div>
+
+    <!-- Count of people needing medical attention -->
+    <div class="flex items-center justify-between mb-5">
+      <div class="text-sm font-semibold text-white/60">People needing medical attention</div>
+      <div class="flex items-center gap-3">
+        <button id="decMedNeeds" class="skill-btn">−</button>
+        <span id="dispMedNeeds" class="skill-count">0</span>
+        <button id="incMedNeeds" class="skill-btn">+</button>
+      </div>
+    </div>
+
+    <!-- Tags -->
+    <div class="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">Specific Requirements — tap to flag</div>
+    <div class="flex flex-wrap gap-2">
+      <button id="tagDialysis"    class="tag-btn tag-inactive" data-tag="dialysis"   >💉 Dialysis</button>
+      <button id="tagOxygen"      class="tag-btn tag-inactive" data-tag="oxygen"     >🫁 Oxygen</button>
+      <button id="tagPsychiatric" class="tag-btn tag-inactive" data-tag="psychiatric">🧠 Psychiatric</button>
+      <button id="tagInsulin"     class="tag-btn tag-inactive" data-tag="insulin"    >🩸 Insulin</button>
+      <button id="tagWheelchair"  class="tag-btn tag-inactive" data-tag="wheelchair" >♿ Wheelchair</button>
+      <button id="tagPediatric"   class="tag-btn tag-inactive" data-tag="pediatric"  >👶 Pediatric</button>
+    </div>
+  </div>
+
+  <!-- Section 4 — Hazard & Supply ETA -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">warning</span>
+      Hazard & Logistics
+    </div>
+    <div class="flex flex-col gap-4">
+      <div>
+        <label class="text-xs font-bold text-white/40 uppercase tracking-widest block mb-2">⚠ Hazard Note</label>
+        <textarea id="hazardNote" class="note-area" rows="2"
+          placeholder="e.g. 'Toxic plume drifting from north. Keep windows closed.'"
+          oninput="onFieldChange('hazard_note','hazardNote')"></textarea>
+      </div>
+      <div>
+        <label class="text-xs font-bold text-white/40 uppercase tracking-widest block mb-2">📦 Next Supply ETA</label>
+        <input id="supplyEta" type="datetime-local" class="eta-input"
+          onchange="onFieldChange('next_supply_eta','supplyEta')"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 5 — Skills Registry -->
+  <div class="section-card">
+    <div class="section-title">
+      <span class="material-symbols-outlined">engineering</span>
+      Skills Among Residents
+    </div>
+    <p class="text-xs text-white/35 mb-4">Count of displaced people with professional skills that can assist operations.</p>
+
+    <div>
+      <div class="skill-row">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px] text-[#f472b6]">medical_services</span>
+          <span class="skill-name">Medical Staff</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="decSkillMed" class="skill-btn">−</button>
+          <span id="dispSkillMed" class="skill-count">0</span>
+          <button id="incSkillMed" class="skill-btn">+</button>
+        </div>
+      </div>
+      <div class="skill-row">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px] text-[#60a5fa]">construction</span>
+          <span class="skill-name">Engineers</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="decSkillEng" class="skill-btn">−</button>
+          <span id="dispSkillEng" class="skill-count">0</span>
+          <button id="incSkillEng" class="skill-btn">+</button>
+        </div>
+      </div>
+      <div class="skill-row">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px] text-[#34d399]">translate</span>
+          <span class="skill-name">Translators</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="decSkillTrans" class="skill-btn">−</button>
+          <span id="dispSkillTrans" class="skill-count">0</span>
+          <button id="incSkillTrans" class="skill-btn">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Bottom bar ── -->
+<div class="fixed bottom-0 left-0 right-0 p-4 flex justify-between items-center"
+     style="background:rgba(10,10,18,0.95);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,0.06);">
+  <div class="flex items-center gap-2 text-sm text-white/40">
+    <span class="material-symbols-outlined text-[16px] text-green-400">shield</span>
+    <span id="lastUpdatedLabel">Fetching status…</span>
+  </div>
+  <button onclick="flushSave('shelter')"
+    class="bg-green-400 text-black font-bold text-sm px-5 py-2.5 rounded-full flex items-center gap-2 hover:opacity-90 transition-opacity">
+    <span class="material-symbols-outlined text-[16px]">save</span>
+    Save Now
+  </button>
+</div>
+
+<script src="js/admin.js"></script>
+<script>
+let _capacity = 1; // shelter capacity, loaded from DB
+let _occupied = 0;
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (!requireAuth("shelter")) return;
+  document.getElementById("facilityNameDisplay").textContent = getFacility();
+
+  try {
+    const { data } = await fetchStatus();
+    populateAll(data);
+  } catch {
+    document.getElementById("lastUpdatedLabel").textContent = "Could not load status.";
+  }
+});
+
+function populateAll(d) {
+  _capacity = d.capacity || 1;
+  _occupied = d.occupied || 0;
+
+  // Big occupancy counter (manual wiring for batch support)
+  document.getElementById("dispOccupied").textContent = _occupied;
+  document.getElementById("capacityLabel").textContent = `of ${_capacity} capacity`;
+  updateCapacityBar(_occupied);
+
+  document.getElementById("decOccupied").addEventListener("click", () => {
+    if (_occupied <= 0) return;
+    _occupied--;
+    document.getElementById("dispOccupied").textContent = _occupied;
+    updateCapacityBar(_occupied);
+    queueSave("shelter", "occupied", _occupied);
+  });
+  document.getElementById("incOccupied").addEventListener("click", () => {
+    _occupied++;
+    document.getElementById("dispOccupied").textContent = _occupied;
+    updateCapacityBar(_occupied);
+    queueSave("shelter", "occupied", _occupied);
+  });
+
+  // Small skill counters
+  initSmallCounter("dispSkillMed",   "decSkillMed",   "incSkillMed",   d.skills_medical,     "shelter", "skills_medical");
+  initSmallCounter("dispSkillEng",   "decSkillEng",   "incSkillEng",   d.skills_engineering, "shelter", "skills_engineering");
+  initSmallCounter("dispSkillTrans", "decSkillTrans", "incSkillTrans", d.skills_translation,  "shelter", "skills_translation");
+  initSmallCounter("dispMedNeeds",   "decMedNeeds",   "incMedNeeds",   d.medical_needs_count, "shelter", "medical_needs_count");
+
+  // Open/closed
+  setOpenStatusUI(d.is_open);
+
+  // Water/food sliders
+  initSlider("waterSlider","waterDaysLabel","water_supply_days", d.water_supply_days ?? 3);
+  initSlider("foodSlider", "foodDaysLabel", "food_supply_days",  d.food_supply_days ?? 3);
+
+  // Add +/- buttons to sliders
+  document.getElementById("decWater").addEventListener("click", () => adjustSlider("waterSlider","waterDaysLabel","water_supply_days",-1));
+  document.getElementById("incWater").addEventListener("click", () => adjustSlider("waterSlider","waterDaysLabel","water_supply_days", 1));
+  document.getElementById("decFood").addEventListener("click",  () => adjustSlider("foodSlider", "foodDaysLabel","food_supply_days", -1));
+  document.getElementById("incFood").addEventListener("click",  () => adjustSlider("foodSlider", "foodDaysLabel","food_supply_days",  1));
+
+  // Bedding chips
+  initChipGroup(
+    ["beddingOk","beddingLow","beddingOut"],
+    d.bedding_status || "ok", "shelter", "bedding_status",
+    { ok: "chip-green", low: "chip-yellow", out: "chip-red" }
+  );
+
+  // Medical tags
+  initTagChips(
+    ["tagDialysis","tagOxygen","tagPsychiatric","tagInsulin","tagWheelchair","tagPediatric"],
+    d.medical_needs_tags || "", "shelter"
+  );
+
+  // Notes & ETA
+  const hazardEl = document.getElementById("hazardNote");
+  if (hazardEl) hazardEl.value = d.hazard_note || "";
+  const etaEl = document.getElementById("supplyEta");
+  if (etaEl && d.next_supply_eta) {
+    // Convert to datetime-local format (strip seconds)
+    etaEl.value = d.next_supply_eta.replace(" ","T").substring(0,16);
+  }
+
+  // Last updated
+  if (d.last_updated) {
+    const dt = new Date(d.last_updated);
+    document.getElementById("lastUpdatedLabel").textContent =
+      "Last update: " + dt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  document.getElementById("saveStatus").classList.remove("hidden");
+}
+
+function updateCapacityBar(occupied) {
+  const pct = Math.min(100, Math.round((occupied / _capacity) * 100));
+  const bar = document.getElementById("capacityBar");
+  bar.style.width = pct + "%";
+  bar.style.background = pct >= 95 ? "#EF4444" : pct >= 75 ? "#F59E0B" : "#10B981";
+}
+
+function batchAdd(n) {
+  _occupied = Math.max(0, _occupied + n);
+  document.getElementById("dispOccupied").textContent = _occupied;
+  updateCapacityBar(_occupied);
+  queueSave("shelter", "occupied", _occupied);
+}
+
+function initSlider(sliderId, labelId, field, initVal) {
+  const slider = document.getElementById(sliderId);
+  if (!slider) return;
+  slider.value = initVal;
+  updateSliderLabel(labelId, initVal);
+}
+function onSlider(field, labelId, sliderId) {
+  const val = parseInt(document.getElementById(sliderId).value);
+  updateSliderLabel(labelId, val);
+  queueSave("shelter", field, val);
+}
+function updateSliderLabel(labelId, val) {
+  const el = document.getElementById(labelId);
+  if (!el) return;
+  el.textContent = `${val} day${val !== 1 ? "s" : ""}`;
+  el.className = "text-lg font-bold " + (val > 3 ? "text-green-400" : val > 1 ? "text-yellow-400" : "text-red-400");
+}
+function adjustSlider(sliderId, labelId, field, delta) {
+  const slider = document.getElementById(sliderId);
+  let val = parseInt(slider.value) + delta;
+  val = Math.max(0, Math.min(14, val));
+  slider.value = val;
+  updateSliderLabel(labelId, val);
+  queueSave("shelter", field, val);
+}
+
+function initSmallCounter(displayId, decId, incId, initVal, role, field) {
+  let val = initVal ?? 0;
+  const display = document.getElementById(displayId);
+  const dec = document.getElementById(decId);
+  const inc = document.getElementById(incId);
+  if (!display || !dec || !inc) return;
+  display.textContent = val;
+  dec.addEventListener("click", () => { if (val <= 0) return; val--; display.textContent = val; queueSave(role, field, val); });
+  inc.addEventListener("click", () => { val++; display.textContent = val; queueSave(role, field, val); });
+}
+
+function setOpenStatus(val) {
+  setOpenStatusUI(val);
+  queueSave("shelter", "is_open", val);
+}
+function setOpenStatusUI(val) {
+  document.getElementById("btnOpen").className   = "big-toggle-btn " + (val ? "active-open"  : "inactive");
+  document.getElementById("btnClosed").className = "big-toggle-btn " + (!val ? "active-close" : "inactive");
+}
+
+let _noteTimers = {};
+function onFieldChange(field, elementId) {
+  clearTimeout(_noteTimers[field]);
+  showSaving();
+  _noteTimers[field] = setTimeout(() => {
+    const val = document.getElementById(elementId).value;
+    queueSave("shelter", field, val);
+  }, 1500);
+}
+</script>
+</body>
+</html>

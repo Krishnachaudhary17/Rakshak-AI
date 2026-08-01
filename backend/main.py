@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import init_db
-from routes import events, hazards, facilities, assistant
+from routes import events, hazards, facilities, assistant, admin
 import os
 
 app = FastAPI(title="Rakshak AI API", version="1.0.0")
@@ -26,6 +26,7 @@ app.include_router(events.router, prefix="/api/events", tags=["Events"])
 app.include_router(hazards.router, prefix="/api/hazards", tags=["Hazards"])
 app.include_router(facilities.router, prefix="/api/facilities", tags=["Facilities"])
 app.include_router(assistant.router, prefix="/api/assistant", tags=["Assistant"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 # Serve the frontend from FastAPI — no CORS issues during demo
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
