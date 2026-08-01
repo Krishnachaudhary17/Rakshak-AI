@@ -108,12 +108,17 @@ def detect_events():
             articles = resp.get("articles", [])
             conn = get_db()
             inserted = []
+            # All disaster keywords flattened for relevance check
+            all_disaster_kws = [kw for kws in DISASTER_TYPE_KEYWORDS.values() for kw in kws]
             for a in articles:
                 title = a.get("title", "")
                 if not title or "[Removed]" in title:
                     continue
                 desc = a.get("description", "") or ""
-                combined = f"{title} {desc}"
+                combined = f"{title} {desc}".lower()
+                # FILTER: only process if the article actually mentions a disaster keyword
+                if not any(kw in combined for kw in all_disaster_kws):
+                    continue
                 location, coords = geocode_from_text(combined)
                 if not coords:
                     continue  # skip articles we can't place on the map
@@ -171,3 +176,76 @@ def report_event(payload: EventReport):
     conn.commit()
     conn.close()
     return {"status": "reported", "title": payload.title, "location": payload.location}
+
+
+@router.get("/news")
+def get_disaster_news():
+    """
+    Return recent India disaster news articles from NewsAPI for display in the
+    news feed panel. Returns raw articles (not stored in DB) — just for reading.
+    Falls back to curated demo headlines if no API key is set.
+    """
+    if NEWS_KEY:
+        try:
+            url = "https://newsapi.org/v2/everything"
+            params = {
+                "q": "(flood OR earthquake OR cyclone OR fire OR landslide OR tsunami OR disaster OR NDRF OR IMD OR relief OR rescue OR evacuation OR alert) India",
+                "apiKey": NEWS_KEY,
+                "sortBy": "publishedAt",
+                "pageSize": 20,  # fetch more so we have enough after filtering
+                "language": "en",
+            }
+            resp = requests.get(url, params=params, timeout=8).json()
+            articles = resp.get("articles", [])
+
+            # Keywords that must appear in title OR description to qualify as disaster news
+            DISASTER_NEWS_KEYWORDS = [
+                "flood", "flooding", "waterlog", "inundat",
+                "earthquake", "tremor", "quake", "seismic",
+                "fire", "blaze", "inferno", "burnt",
+                "cyclone", "hurricane", "typhoon", "storm surge",
+                "landslide", "mudslide", "rockslide",
+                "tsunami", "tidal wave",
+                "disaster", "calamity", "catastrophe",
+                "ndrf", "sdrf", "rescue", "evacuation", "evacuate",
+                "relief camp", "imd alert", "red alert", "orange alert",
+                "deaths", "missing", "casualties", "displaced", "relief",
+                "heavy rain", "rainfall warning", "flash flood",
+            ]
+
+            result = []
+            for a in articles:
+                title = (a.get("title", "") or "").lower()
+                desc = (a.get("description", "") or "").lower()
+                combined = f"{title} {desc}"
+
+                if not title or "[removed]" in title:
+                    continue
+                # Only include if at least one disaster keyword appears
+                if not any(kw in combined for kw in DISASTER_NEWS_KEYWORDS):
+                    continue
+
+                result.append({
+                    "title": a.get("title", ""),
+                    "description": a.get("description", ""),
+                    "source": a.get("source", {}).get("name", "Unknown"),
+                    "url": a.get("url", "#"),
+                    "publishedAt": a.get("publishedAt", ""),
+                    "urlToImage": a.get("urlToImage", ""),
+                })
+                if len(result) >= 8:
+                    break  # stop after 8 good articles
+
+            if result:
+                return result
+        except Exception:
+            pass
+
+    # Demo fallback headlines
+    return [
+        {"title": "IMD issues Red Alert for heavy rainfall across Kerala and Karnataka", "description": "India Meteorological Department has issued red alerts for several districts.", "source": "Times of India", "url": "#", "publishedAt": "", "urlToImage": ""},
+        {"title": "Flood situation worsens in Assam, 4 lakh people displaced", "description": "Rising Brahmaputra river levels have inundated over 200 villages across 12 districts.", "source": "NDTV", "url": "#", "publishedAt": "", "urlToImage": ""},
+        {"title": "Cyclone alert: Coastal Andhra Pradesh on high alert as storm nears", "description": "NDRF teams deployed across Visakhapatnam and Srikakulam districts.", "source": "The Hindu", "url": "#", "publishedAt": "", "urlToImage": ""},
+        {"title": "Landslide blocks NH-44 in Himachal Pradesh, rescue teams deployed", "description": "Heavy rainfall triggered landslides near Shimla cutting off 3 villages.", "source": "Hindustan Times", "url": "#", "publishedAt": "", "urlToImage": ""},
+        {"title": "NDRF pre-positions 30 teams across flood-prone states ahead of monsoon peak", "description": "National Disaster Response Force teams are on standby across Bihar, UP and Odisha.", "source": "ANI", "url": "#", "publishedAt": "", "urlToImage": ""},
+    ]

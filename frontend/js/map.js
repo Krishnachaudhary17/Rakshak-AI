@@ -202,3 +202,43 @@ function buildPopup(f, type) {
       </button>
     </div>`;
 }
+
+/**
+ * Called from the dashboard "Report Disaster" wizard after form submit.
+ * Drops a hazard zone circle + event marker on the live map instantly.
+ */
+function addReportedHazard(lat, lng, disasterType, title, location) {
+  const RADII = {
+    fire: 150, flood: 3000, earthquake: 10000,
+    cyclone: 50000, landslide: 500, tsunami: 20000, disaster: 1000,
+  };
+  const COLORS = {
+    fire: '#EF4444', flood: '#3B82F6', earthquake: '#F59E0B',
+    cyclone: '#8B5CF6', landslide: '#92400E', tsunami: '#1D4ED8', disaster: '#F59E0B',
+  };
+  const radius = RADII[disasterType] || 1000;
+  const color  = COLORS[disasterType] || '#F59E0B';
+
+  if (!map) return;
+
+  // Hazard zone circle
+  L.circle([lat, lng], {
+    color, fillColor: color, fillOpacity: 0.15,
+    radius, weight: 1.5, dashArray: '4 4',
+  }).bindPopup(
+    `<strong>🚨 ${title}</strong><br>${location}<br>` +
+    `Type: <strong>${disasterType.toUpperCase()}</strong><br>` +
+    `Radius: ${radius >= 1000 ? (radius/1000).toFixed(1)+' km' : radius+'m'}<br>` +
+    `<em style="color:#F59E0B">Citizen report</em>`
+  ).addTo(layers.hazards).openPopup();
+
+  // Event marker
+  const dot = L.divIcon({
+    className: '',
+    html: `<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 10px ${color}"></div>`,
+    iconSize: [14, 14], iconAnchor: [7, 7],
+  });
+  L.marker([lat, lng], { icon: dot }).addTo(layers.hazards);
+
+  map.flyTo([lat, lng], 14, { duration: 1.5 });
+}

@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="css/style.css?v=2"/>
+<link rel="stylesheet" href="css/style.css?v=3"/>
 <script src="js/tailwind.config.js"></script>
 </head>
 <body class="bg-background text-on-background font-body-md antialiased min-h-screen flex flex-col">
@@ -19,7 +19,7 @@
   Offline — showing cached data. Call 112 for immediate help.
 </div>
 <!-- NAV -->
-<nav class="bg-background/95 backdrop-blur-md border-b border-outline-variant flex justify-between items-center w-full h-16 px-margin-desktop sticky top-0 z-50">
+<nav class="bg-background/95 backdrop-blur-md border-b border-outline-variant flex justify-between items-center w-full h-16 px-margin-desktop sticky top-0 z-[2000]">
   <div class="flex items-center gap-4">
     <img alt="Rakshak AI Logo" class="h-8" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCS9WVsNI3SETZU0HIc2sVI4lwSSamXCn1dJAKHlTsFT160wRyOwXyGYH_yavV2aP1QeP7TnKTgv10k5SM1VIqSoKchCO7YaDVUi9m3Ri5GK06xXhfdySopf2f1EYo0-1fX8x4HRjk_c4LlDfboSzCgbn0rxX_B8eEY6F5ajk1XTv6KITHRqabO1qe-R_hS_SwFaGA_qGpECXAiyOI1ZO6j0Phg_mFQ7A9yG302QZJe-8Zjpc6QMsiP"/>
     <span class="text-headline-md font-headline-md font-bold text-on-background">Rakshak AI</span>
@@ -42,7 +42,7 @@
   </div>
 </nav>
 <!-- ALERT BANNER -->
-<div class="alert-banner w-full bg-[#EF4444] text-white relative z-40 border-b border-[#B91C1C] flex items-center h-10">
+<div class="alert-banner w-full bg-[#EF4444] text-white relative z-[1900] border-b border-[#B91C1C] flex items-center h-10">
   <div class="absolute left-0 bg-[#EF4444] z-10 px-4 h-full flex items-center shadow-[10px_0_15px_-3px_rgba(239,68,68,1)]">
     <span class="material-symbols-outlined mr-2 animate-pulse" style="font-variation-settings:'FILL' 1;">warning</span>
     <span class="font-label-md font-bold text-label-md uppercase tracking-wider">Active Alert</span>
@@ -77,29 +77,83 @@
       </button>
     </div>
     <!-- Damage Assessment -->
-    <div id="assessmentSection" class="bg-surface-container-high rounded-xl border border-surface-variant p-6 shadow-lg flex-1">
+    <div id="assessmentSection" class="bg-surface-container-high rounded-xl border border-surface-variant p-5 shadow-lg flex-1">
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-tertiary">analytics</span>
-          <h2 class="text-headline-sm font-headline-sm text-on-surface">AI Damage Assessment</h2>
+          <span class="material-symbols-outlined text-tertiary" style="font-variation-settings:'FILL' 1">add_location_alt</span>
+          <h2 class="text-headline-sm font-headline-sm text-on-surface">Report Disaster</h2>
         </div>
-        <a href="assessment.html" class="text-label-sm font-label-sm text-tertiary hover:underline flex items-center gap-1"><span class="material-symbols-outlined text-sm">open_in_full</span>Full View</a>
+        <span class="text-label-sm font-label-sm text-on-surface-variant bg-surface-container px-2 py-1 rounded-full border border-outline-variant">Adds to live map</span>
       </div>
-      <div class="border-2 border-dashed border-outline-variant rounded-xl p-8 flex flex-col items-center justify-center relative overflow-hidden bg-surface-container hover:bg-surface-variant/30 transition-colors cursor-pointer group min-h-[200px]" ondragover="event.preventDefault()" ondrop="handleImageDrop(event)" onclick="document.getElementById('imageUpload').click()">
-        <div class="absolute inset-0 pointer-events-none hidden group-hover:block">
-          <div class="absolute left-0 w-full h-[2px] bg-tertiary animate-scan shadow-[0_0_8px_2px_rgba(255,185,95,0.5)] z-20"></div>
-          <div class="absolute inset-0 bg-gradient-to-b from-transparent to-tertiary/10 opacity-50 z-10"></div>
+
+      <!-- Step 1: Photo upload -->
+      <div id="step1" class="flex flex-col gap-3">
+        <div class="border-2 border-dashed border-outline-variant rounded-xl p-6 flex flex-col items-center justify-center relative overflow-hidden bg-surface-container hover:bg-surface-variant/30 transition-colors cursor-pointer group min-h-[160px]"
+             ondragover="event.preventDefault()" ondrop="handleImageDrop(event)" onclick="document.getElementById('imageUpload').click()">
+          <div id="photoPreviewWrap" class="hidden w-full flex flex-col items-center gap-2">
+            <img id="previewImage" class="w-full max-h-36 object-cover rounded-lg" src="" alt="Disaster photo"/>
+            <span class="text-label-sm text-tertiary">✓ Photo selected — continue below</span>
+          </div>
+          <div id="uploadPrompt" class="flex flex-col items-center gap-2">
+            <span class="material-symbols-outlined text-4xl text-outline group-hover:text-tertiary transition-colors">photo_camera</span>
+            <p class="text-body-sm text-on-surface-variant text-center">Tap to upload a disaster photo<br/><span class="text-label-sm text-outline">JPEG, PNG, HEIC supported</span></p>
+          </div>
+          <input type="file" id="imageUpload" class="hidden" accept="image/*" onchange="onPhotoSelected(event)"/>
         </div>
-        <span class="material-symbols-outlined text-display-lg text-outline mb-4 group-hover:text-tertiary transition-colors">cloud_upload</span>
-        <p class="text-body-md font-body-md text-on-surface-variant text-center max-w-sm mb-2">Drag and drop drone imagery or satellite feeds here for instant structural analysis.</p>
-        <span class="text-label-sm font-label-sm text-outline px-3 py-1 bg-surface-container-highest rounded-full">Supports JPEG, PNG, TIFF, GeoTIFF</span>
-        <input type="file" id="imageUpload" class="hidden" accept="image/*" onchange="handleImageUpload(event)"/>
       </div>
-      <div id="assessmentResult" class="hidden mt-4 bg-surface-container rounded-xl p-4 border border-outline-variant">
-        <img id="previewImage" class="w-full max-h-48 object-cover rounded-lg mb-3" src="" alt="Uploaded damage imagery"/>
-        <div class="flex items-center gap-2 mb-2"><div class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div><span class="text-label-sm font-label-sm text-on-surface-variant">AI ANALYSIS RUNNING...</span></div>
-        <div id="assessmentText" class="text-body-md font-body-md text-on-surface"></div>
+
+      <!-- Step 2: Details form (shown after photo) -->
+      <div id="step2" class="hidden flex flex-col gap-3 mt-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div class="flex flex-col gap-1">
+            <label class="text-label-sm text-on-surface-variant uppercase tracking-wide font-bold">Disaster Type</label>
+            <select id="rptType" class="bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-tertiary">
+              <option value="fire">🔥 Fire</option>
+              <option value="flood">🌊 Flood</option>
+              <option value="earthquake">🌍 Earthquake</option>
+              <option value="cyclone">🌀 Cyclone</option>
+              <option value="landslide">⛰️ Landslide</option>
+              <option value="disaster">⚠️ Other</option>
+            </select>
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-label-sm text-on-surface-variant uppercase tracking-wide font-bold">Severity</label>
+            <select id="rptSeverity" class="bg-surface-container border border-outline-variant rounded-lg px-3 py-2 text-body-sm text-on-surface focus:outline-none focus:border-tertiary">
+              <option value="low">Low</option>
+              <option value="moderate" selected>Moderate</option>
+              <option value="high">High</option>
+              <option value="extreme">Extreme</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-label-sm text-on-surface-variant uppercase tracking-wide font-bold">Location (city or address)</label>
+          <input id="rptLocation" type="text" placeholder="e.g. Lajpat Nagar, Delhi"
+            class="bg-surface-container border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-tertiary placeholder:text-on-surface-variant/40"/>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-label-sm text-on-surface-variant uppercase tracking-wide font-bold">Brief Description</label>
+          <input id="rptTitle" type="text" placeholder="e.g. Building fire on 3rd floor"
+            class="bg-surface-container border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm text-on-surface focus:outline-none focus:border-tertiary placeholder:text-on-surface-variant/40"/>
+        </div>
+        <button onclick="submitReport()"
+          class="w-full bg-tertiary text-on-tertiary font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity text-label-md min-h-[48px]">
+          <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">add_location_alt</span>
+          Add to Live Map
+        </button>
       </div>
+
+      <!-- Step 3: Success -->
+      <div id="step3" class="hidden flex flex-col items-center gap-3 py-4">
+        <div class="w-14 h-14 rounded-full bg-[#10B981]/20 border border-[#10B981]/40 flex items-center justify-center">
+          <span class="material-symbols-outlined text-[#10B981] text-3xl" style="font-variation-settings:'FILL' 1">check_circle</span>
+        </div>
+        <p class="text-body-md font-bold text-on-surface">Event Added to Map!</p>
+        <p id="rptSuccessMsg" class="text-label-sm text-on-surface-variant text-center"></p>
+        <button onclick="resetReport()" class="text-label-sm text-tertiary hover:underline">Report another →</button>
+      </div>
+
+      <div id="rptError" class="hidden mt-2 text-label-sm text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-lg px-3 py-2"></div>
     </div>
   </div>
   <!-- RIGHT: Status + Resources + Assistant -->
@@ -122,6 +176,19 @@
       </div>
       <div id="facilityList" class="p-4 flex flex-col gap-3 overflow-y-auto max-h-[400px]">
         <div class="flex flex-col items-center justify-center py-8 gap-2 text-on-surface-variant"><div class="loading-spinner"></div><span class="text-label-sm font-label-sm">Loading...</span></div>
+      </div>
+    </div>
+    <!-- Live Disaster News -->
+    <div class="bg-surface-container-high rounded-xl border border-surface-variant shadow-lg overflow-hidden">
+      <div class="px-4 py-3 border-b border-surface-variant flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[#EF4444] text-[18px]" style="font-variation-settings:'FILL' 1">breaking_news</span>
+          <h2 class="text-body-md font-bold text-on-surface">Live Disaster News</h2>
+        </div>
+        <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-[#EF4444] animate-pulse"></div><span class="text-label-sm text-on-surface-variant">NewsAPI</span></div>
+      </div>
+      <div id="newsFeed" class="flex flex-col divide-y divide-surface-variant max-h-[280px] overflow-y-auto">
+        <div class="flex flex-col items-center justify-center py-6 gap-2 text-on-surface-variant"><div class="loading-spinner"></div><span class="text-label-sm">Loading news...</span></div>
       </div>
     </div>
     <!-- Gemini Assistant -->
@@ -147,7 +214,7 @@
   </div>
 </main>
 <!-- MODALS -->
-<div id="langModal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+<div id="langModal" class="hidden fixed inset-0 z-[3000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
   <div class="bg-surface-container-high border border-outline-variant rounded-xl p-5 max-w-xs w-full shadow-2xl">
     <h3 class="text-headline-sm font-headline-sm text-on-surface mb-4">Select Language</h3>
     <div class="flex flex-col gap-2">
@@ -156,7 +223,7 @@
     <button onclick="document.getElementById('langModal').classList.add('hidden')" class="mt-4 w-full text-on-surface-variant text-label-sm font-label-sm hover:text-on-surface">Cancel</button>
   </div>
 </div>
-<div id="sosModal" class="hidden fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+<div id="sosModal" class="hidden fixed inset-0 z-[3000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
   <div class="bg-surface-container-high border border-[#EF4444]/50 rounded-xl p-6 max-w-sm w-full shadow-2xl">
     <div class="flex items-center gap-3 mb-5"><div class="w-12 h-12 bg-[#EF4444] rounded-full flex items-center justify-center shadow-lg"><span class="material-symbols-outlined text-white text-2xl" style="font-variation-settings:'FILL' 1">emergency</span></div><div><h2 class="text-headline-sm font-headline-sm text-[#EF4444]">SOS ACTIVATED</h2><p class="text-label-sm font-label-sm text-on-surface-variant">Select emergency service</p></div></div>
     <div class="flex flex-col gap-3 mb-5">
@@ -179,7 +246,7 @@
 </nav>
 <script src="js/api.js"></script><script src="js/map.js"></script><script src="js/voice.js"></script><script src="js/offline.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded",()=>{initMap();loadFacilities("hospitals");loadAlerts();loadHazardZones();setupOfflineHandlers();});
+document.addEventListener("DOMContentLoaded",()=>{initMap();loadFacilities("hospitals");loadAlerts();loadHazardZones();loadNews();setupOfflineHandlers();});
 function openLangModal(){document.getElementById("langModal").classList.remove("hidden");}
 function setLang(v){document.getElementById("langSelect").value=v;document.getElementById("langModal").classList.add("hidden");}
 function triggerSOS(){document.getElementById("sosModal").classList.remove("hidden");}
@@ -235,13 +302,103 @@ async function loadAlerts(){
   catch{_sa('⚠ SEVERE WEATHER WARNING: Category 4 Cyclone approaching coastal regions. Evacuation orders in effect. Seek shelter immediately. ⚠ FLOOD ALERT: River levels rising rapidly. Move to high ground now.');}
 }
 function navigateTo(lat,lng,name){window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,"_blank");}
-function handleImageDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)processImage(f);}
-function handleImageUpload(e){const f=e.target.files[0];if(f)processImage(f);}
-function processImage(file){
+function handleImageDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f)onPhotoSelected({target:{files:[f]}});}
+
+// ── Report Disaster Wizard ────────────────────────────────────────────────────
+function onPhotoSelected(e){
+  const file=e.target.files[0];
+  if(!file)return;
   const r=new FileReader();
-  r.onload=e=>{document.getElementById("previewImage").src=e.target.result;document.getElementById("assessmentResult").classList.remove("hidden");document.getElementById("assessmentText").textContent="Analyzing structural damage...";
-  setTimeout(()=>{const res=["🟠 Moderate structural damage detected. Roof integrity compromised. Recommend evacuation.","🔴 Severe damage identified. Building unsafe for entry. Contact NDRF on 1078.","🟡 Minor surface damage only. Structure appears stable. Monitor for secondary hazards."];document.getElementById("assessmentText").innerHTML=res[Math.floor(Math.random()*res.length)];},2200);};
+  r.onload=ev=>{
+    document.getElementById('previewImage').src=ev.target.result;
+    document.getElementById('uploadPrompt').classList.add('hidden');
+    document.getElementById('photoPreviewWrap').classList.remove('hidden');
+    document.getElementById('step2').classList.remove('hidden');
+    document.getElementById('rptError').classList.add('hidden');
+  };
   r.readAsDataURL(file);
+}
+
+async function submitReport(){
+  const location=document.getElementById('rptLocation').value.trim();
+  const title=document.getElementById('rptTitle').value.trim();
+  const type=document.getElementById('rptType').value;
+  const severity=document.getElementById('rptSeverity').value;
+  const errEl=document.getElementById('rptError');
+
+  if(!location){errEl.textContent='Please enter a location.';errEl.classList.remove('hidden');return;}
+  if(!title){errEl.textContent='Please enter a description.';errEl.classList.remove('hidden');return;}
+  errEl.classList.add('hidden');
+
+  // Geocode the location using Nominatim (free, no key needed)
+  let lat,lng;
+  try{
+    const geo=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location+', India')}&format=json&limit=1`,{headers:{'Accept-Language':'en'}});
+    const geoData=await geo.json();
+    if(!geoData.length){errEl.textContent='Location not found. Try a more specific place name.';errEl.classList.remove('hidden');return;}
+    lat=parseFloat(geoData[0].lat);
+    lng=parseFloat(geoData[0].lon);
+  }catch{errEl.textContent='Could not geocode location. Check your connection.';errEl.classList.remove('hidden');return;}
+
+  // POST event to backend
+  try{
+    await fetch('/api/events/report',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({title,disaster_type:type,location,lat,lng,severity})
+    });
+  }catch(e){/* non-critical — still show on map */}
+
+  // Add hazard zone to live map immediately
+  if(typeof addReportedHazard==='function') addReportedHazard(lat,lng,type,title,location);
+
+  // Show success
+  document.getElementById('step2').classList.add('hidden');
+  document.getElementById('step3').classList.remove('hidden');
+  document.getElementById('rptSuccessMsg').textContent=`${title} at ${location} has been added to the live map.`;
+
+  // Fly map to new event
+  if(typeof map!=='undefined'&&map)map.flyTo([lat,lng],13,{duration:1.5});
+}
+
+function resetReport(){
+  document.getElementById('step2').classList.add('hidden');
+  document.getElementById('step3').classList.add('hidden');
+  document.getElementById('uploadPrompt').classList.remove('hidden');
+  document.getElementById('photoPreviewWrap').classList.add('hidden');
+  document.getElementById('imageUpload').value='';
+  document.getElementById('rptLocation').value='';
+  document.getElementById('rptTitle').value='';
+  document.getElementById('rptError').classList.add('hidden');
+}
+async function loadNews(){
+  const feed=document.getElementById('newsFeed');
+  try{
+    const res=await fetch('/api/events/news');
+    const articles=await res.json();
+    if(!articles.length){feed.innerHTML='<div class="text-label-sm text-on-surface-variant text-center py-6">No news available.</div>';return;}
+    const icons={'flood':'🌊','fire':'🔥','earthquake':'🌍','cyclone':'🌀','landslide':'⛰️','tsunami':'🌊','disaster':'⚠️'};
+    feed.innerHTML=articles.map(a=>{
+      const t=a.title||'';
+      const d=a.description?`<p class="text-label-sm text-on-surface-variant mt-0.5 line-clamp-2">${a.description}</p>`:'';
+      const src=a.source?`<span class="text-label-sm text-tertiary font-mono">${a.source}</span>`:'';
+      const time=a.publishedAt?`<span class="text-label-sm text-on-surface-variant">${new Date(a.publishedAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span>`:'';
+      const link=a.url&&a.url!=='#'?`href="${a.url}" target="_blank" rel="noopener"`:'href="#" onclick="return false"';
+      return `<a ${link} class="block px-4 py-3 hover:bg-surface-container transition-colors group">
+        <div class="flex items-start gap-2">
+          <span class="text-base shrink-0 mt-0.5">📰</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-body-sm font-bold text-on-surface group-hover:text-tertiary transition-colors leading-snug">${t}</p>
+            ${d}
+            <div class="flex items-center gap-2 mt-1.5">${src}${time?'<span class="text-on-surface-variant">·</span>':''} ${time}</div>
+          </div>
+          <span class="material-symbols-outlined text-outline group-hover:text-tertiary transition-colors text-sm shrink-0">open_in_new</span>
+        </div>
+      </a>`;
+    }).join('');
+  }catch(e){
+    feed.innerHTML='<div class="text-label-sm text-on-surface-variant text-center py-6">Unable to load news.</div>';
+  }
 }
 </script>
 

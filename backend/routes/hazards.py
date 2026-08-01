@@ -5,15 +5,16 @@ router = APIRouter()
 
 # Risk radius (in metres) and color coding per disaster type
 DISASTER_CONFIG = {
-    "fire":       {"radius": 2000,  "risk": "high",     "color": "#EF4444"},
-    "flood":      {"radius": 5000,  "risk": "high",     "color": "#3B82F6"},
-    "earthquake": {"radius": 8000,  "risk": "moderate", "color": "#F59E0B"},
-    "cyclone":    {"radius": 15000, "risk": "extreme",  "color": "#8B5CF6"},
-    "landslide":  {"radius": 3000,  "risk": "high",     "color": "#92400E"},
-    "tsunami":    {"radius": 10000, "risk": "extreme",  "color": "#1D4ED8"},
+    "fire":       {"radius": 150,   "risk": "high",     "color": "#EF4444"},   # building fire ~150m
+    "flood":      {"radius": 3000,  "risk": "high",     "color": "#3B82F6"},   # flood plain ~3km
+    "earthquake": {"radius": 10000, "risk": "moderate", "color": "#F59E0B"},   # felt zone ~10km
+    "cyclone":    {"radius": 50000, "risk": "extreme",  "color": "#8B5CF6"},   # cyclone ~50km
+    "landslide":  {"radius": 500,   "risk": "high",     "color": "#92400E"},   # slope ~500m
+    "tsunami":    {"radius": 20000, "risk": "extreme",  "color": "#1D4ED8"},   # coastal ~20km
+    "disaster":   {"radius": 1000,  "risk": "moderate", "color": "#F59E0B"},   # generic
 }
 
-DEFAULT_CONFIG = {"radius": 3000, "risk": "moderate", "color": "#F59E0B"}
+DEFAULT_CONFIG = {"radius": 500, "risk": "moderate", "color": "#F59E0B"}
 
 
 def generate_zone_polygon(lat: float, lng: float, radius_m: float, points: int = 16):

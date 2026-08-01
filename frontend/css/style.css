@@ -65,3 +65,25 @@
 .leaflet-popup-content-wrapper{background:#1c2b3c!important;color:#d4e4fa!important;border:1px solid #45464d!important;border-radius:8px!important;box-shadow:0 4px 16px rgba(0,0,0,0.6)!important}
 .leaflet-popup-tip{background:#1c2b3c!important}
 .leaflet-control-zoom a{background:#1c2b3c!important;color:#d4e4fa!important;border-color:#45464d!important}
+
+/* ---- Fix map z-index bleeding over navbar / modals ---- */
+/*
+  Leaflet uses z-index 200-1000 on its internal panes.
+  We contain them inside the map section so they never escape.
+  Then we push the navbar and modals above everything.
+*/
+#mapSection {
+  isolation: isolate;       /* creates new stacking context — Leaflet z-indices are scoped here */
+  position: relative;
+  z-index: 0;
+}
+
+/* Leaflet pane overrides — keep all panes inside our isolation context */
+#mapSection .leaflet-map-pane    { z-index: 2; }
+#mapSection .leaflet-tile-pane   { z-index: 2; }
+#mapSection .leaflet-overlay-pane{ z-index: 3; }
+#mapSection .leaflet-shadow-pane { z-index: 4; }
+#mapSection .leaflet-marker-pane { z-index: 5; }
+#mapSection .leaflet-tooltip-pane{ z-index: 6; }
+#mapSection .leaflet-popup-pane  { z-index: 7; }
+#mapSection .leaflet-control      { z-index: 8; }
